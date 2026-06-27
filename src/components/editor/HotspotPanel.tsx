@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useEditorStore, useActiveScene, useSelectedHotspot } from "@/store/editorStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,39 +14,24 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Crosshair, Plus, Trash2, Info } from "lucide-react";
+import { Crosshair, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import type { Hotspot, HotspotType } from "@/types/tour";
-import { nanoid } from "nanoid";
 
-export function HotspotPanel() {
-  const { tour, activeSceneId, isPlacingHotspot, pendingHotspotPosition,
-    startPlacingHotspot, cancelPlacingHotspot, addHotspot, updateHotspot,
-    deleteHotspot, selectHotspot } = useEditorStore();
+interface HotspotPanelProps {
+  onCancelPlacing: () => void;
+}
+
+export function HotspotPanel({ onCancelPlacing }: HotspotPanelProps) {
+  const {
+    tour, activeSceneId, isPlacingHotspot,
+    newHotspotType, setNewHotspotType,
+    startPlacingHotspot, selectHotspot,
+    updateHotspot, deleteHotspot, selectedHotspotId,
+  } = useEditorStore();
   const activeScene = useActiveScene();
   const selectedHotspot = useSelectedHotspot();
-  const [newHotspotType, setNewHotspotType] = useState<HotspotType>("scene_link");
 
   if (!activeScene) return null;
-
-  const handleConfirmPlacement = () => {
-    if (!pendingHotspotPosition || !activeSceneId) return;
-
-    const defaultContent = getDefaultContent(newHotspotType, tour?.scenes ?? []);
-    const hotspot: Hotspot = {
-      id: nanoid(),
-      sceneId: activeSceneId,
-      type: newHotspotType,
-      pitch: pendingHotspotPosition.pitch,
-      yaw: pendingHotspotPosition.yaw,
-      label: "",
-      iconType: "arrow",
-      iconColor: "#ffffff",
-      order: activeScene.hotspots.length,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      content: defaultContent as any,
-    };
-    addHotspot(activeSceneId, hotspot);
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -57,68 +41,57 @@ export function HotspotPanel() {
         </h3>
       </div>
 
+      {/* Add hotspot section */}
       <div className="p-3 border-b space-y-2">
-        <Label className="text-xs">Typ</Label>
-        <Select
-          value={newHotspotType}
-          onValueChange={(v) => setNewHotspotType(v as HotspotType)}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="scene_link">Szenen-Link</SelectItem>
-            <SelectItem value="info_text">Info-Text</SelectItem>
-            <SelectItem value="url_link">Externer Link</SelectItem>
-            <SelectItem value="video">Video</SelectItem>
-            <SelectItem value="image">Bild</SelectItem>
-          </SelectContent>
-        </Select>
-
         {isPlacingHotspot ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 border border-amber-200">
               <Crosshair className="h-3 w-3 text-amber-600 animate-pulse flex-shrink-0" />
-              <p className="text-[11px] text-amber-700">
-                Klicke auf die Szene um den Hotspot zu setzen
+              <p className="text-[11px] text-amber-700 flex-1">
+                Klicke in die Szene
               </p>
             </div>
             <Button
               variant="outline"
               size="sm"
               className="w-full h-7 text-xs"
-              onClick={cancelPlacingHotspot}
+              onClick={onCancelPlacing}
             >
+              <X className="h-3 w-3 mr-1" />
               Abbrechen
             </Button>
           </div>
-        ) : pendingHotspotPosition ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 border border-green-200">
-              <Info className="h-3 w-3 text-green-600 flex-shrink-0" />
-              <p className="text-[11px] text-green-700">
-                Position gesetzt ({pendingHotspotPosition.pitch.toFixed(1)}°,{" "}
-                {pendingHotspotPosition.yaw.toFixed(1)}°)
-              </p>
-            </div>
-            <Button size="sm" className="w-full h-7 text-xs" onClick={handleConfirmPlacement}>
-              <Plus className="h-3 w-3 mr-1" />
-              Hotspot erstellen
+        ) : (
+          <div className="flex gap-2">
+            <Select
+              value={newHotspotType}
+              onValueChange={(v) => setNewHotspotType(v as HotspotType)}
+            >
+              <SelectTrigger className="h-7 text-xs flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scene_link">Szenen-Link</SelectItem>
+                <SelectItem value="info_text">Info-Text</SelectItem>
+                <SelectItem value="url_link">Externer Link</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="image">Bild</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={startPlacingHotspot}
+              disabled={!activeScene.panoramaImage}
+              title="Hotspot in Szene platzieren"
+            >
+              <Plus className="h-3 w-3" />
             </Button>
           </div>
-        ) : (
-          <Button
-            size="sm"
-            className="w-full h-7 text-xs"
-            onClick={startPlacingHotspot}
-            disabled={!activeScene.panoramaImage}
-          >
-            <Crosshair className="h-3 w-3 mr-1" />
-            Hotspot platzieren
-          </Button>
         )}
       </div>
 
+      {/* Hotspot list */}
       <div className="flex-1 overflow-y-auto">
         {activeScene.hotspots.length === 0 ? (
           <div className="p-4 text-center">
@@ -131,7 +104,7 @@ export function HotspotPanel() {
             {activeScene.hotspots.map((h) => (
               <button
                 key={h.id}
-                onClick={() => selectHotspot(h.id === useEditorStore.getState().selectedHotspotId ? null : h.id)}
+                onClick={() => selectHotspot(h.id === selectedHotspotId ? null : h.id)}
                 className={`w-full text-left p-2 rounded-md border text-xs transition-all ${
                   selectedHotspot?.id === h.id
                     ? "border-primary bg-primary/5"
@@ -140,10 +113,10 @@ export function HotspotPanel() {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">
-                    {h.label || getHotspotTypeLabel(h.type)}
+                    {h.label || getTypeLabel(h.type)}
                   </span>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1">
-                    {getHotspotTypeLabel(h.type)}
+                  <Badge variant="outline" className="text-[9px] h-4 px-1 shrink-0 ml-1">
+                    {getTypeLabel(h.type)}
                   </Badge>
                 </div>
                 <p className="text-muted-foreground text-[10px] mt-0.5">
@@ -155,15 +128,14 @@ export function HotspotPanel() {
         )}
       </div>
 
+      {/* Selected hotspot editor */}
       {selectedHotspot && activeSceneId && (
         <>
           <Separator />
           <HotspotEditor
             hotspot={selectedHotspot}
             scenes={tour?.scenes ?? []}
-            onUpdate={(updates) =>
-              updateHotspot(activeSceneId, selectedHotspot.id, updates)
-            }
+            onUpdate={(updates) => updateHotspot(activeSceneId, selectedHotspot.id, updates)}
             onDelete={() => deleteHotspot(activeSceneId, selectedHotspot.id)}
           />
         </>
@@ -184,7 +156,7 @@ function HotspotEditor({
   onDelete: () => void;
 }) {
   return (
-    <div className="p-3 space-y-3">
+    <div className="p-3 space-y-3 overflow-y-auto max-h-72">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold">Bearbeiten</span>
         <Button
@@ -230,7 +202,7 @@ function HotspotEditor({
               onUpdate({ content: { ...hotspot.content, targetSceneId: v } } as Partial<Hotspot>)
             }
           >
-            <SelectTrigger className="h-7 text-xs">
+            <SelectTrigger className={`h-7 text-xs ${!hotspot.content.targetSceneId ? "border-amber-400" : ""}`}>
               <SelectValue placeholder="Szene wählen..." />
             </SelectTrigger>
             <SelectContent>
@@ -241,6 +213,12 @@ function HotspotEditor({
               ))}
             </SelectContent>
           </Select>
+          {!hotspot.content.targetSceneId && (
+            <p className="text-[10px] text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Zielszene auswählen, damit der Hotspot navigiert
+            </p>
+          )}
         </div>
       )}
 
@@ -300,7 +278,7 @@ function HotspotEditor({
   );
 }
 
-function getHotspotTypeLabel(type: string): string {
+function getTypeLabel(type: string): string {
   const labels: Record<string, string> = {
     scene_link: "Szene",
     info_text: "Info",
@@ -309,19 +287,4 @@ function getHotspotTypeLabel(type: string): string {
     image: "Bild",
   };
   return labels[type] ?? type;
-}
-
-function getDefaultContent(type: HotspotType, scenes: { id: string }[]) {
-  switch (type) {
-    case "scene_link":
-      return { targetSceneId: scenes[0]?.id ?? "", transitionType: "fade" };
-    case "info_text":
-      return { title: "Neue Info", description: "" };
-    case "url_link":
-      return { url: "https://", openInNewTab: true };
-    case "video":
-      return { videoUrl: "", autoplay: false };
-    case "image":
-      return { images: [] };
-  }
 }

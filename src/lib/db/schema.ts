@@ -19,7 +19,6 @@ export const users = pgTable("users", {
   image: text("image"),
   // App-specific fields
   passwordHash: text("password_hash"),
-  stripeCustomerId: text("stripe_customer_id"),
   plan: text("plan", { enum: ["free", "starter", "pro", "agency"] })
     .default("free")
     .notNull(),
@@ -194,7 +193,7 @@ export const analyticsEvents = pgTable(
       .references(() => tours.id)
       .notNull(),
     sceneId: uuid("scene_id").references(() => scenes.id),
-    hotspotId: uuid("hotspot_id").references(() => hotspots.id),
+    hotspotId: uuid("hotspot_id").references(() => hotspots.id, { onDelete: "set null" }),
     eventType: text("event_type", {
       enum: ["tour_view", "scene_view", "hotspot_click", "tour_complete"],
     }).notNull(),

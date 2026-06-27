@@ -69,11 +69,14 @@ export function SceneList() {
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {tour.scenes.map((scene, idx) => (
-          <button
+          <div
             key={scene.id}
+            role="button"
+            tabIndex={0}
             onClick={() => setActiveScene(scene.id)}
+            onKeyDown={(e) => e.key === "Enter" && setActiveScene(scene.id)}
             className={cn(
-              "w-full text-left rounded-lg overflow-hidden border transition-all",
+              "group w-full text-left rounded-lg overflow-hidden border transition-all cursor-pointer",
               activeSceneId === scene.id
                 ? "border-primary bg-primary/5 ring-1 ring-primary"
                 : "border-transparent hover:border-border hover:bg-muted/50"
@@ -114,7 +117,7 @@ export function SceneList() {
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

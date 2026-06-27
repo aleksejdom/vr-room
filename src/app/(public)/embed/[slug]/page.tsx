@@ -58,7 +58,10 @@ export default async function EmbedPage({ params }: Props) {
       initialYaw: s.initialYaw ?? 0,
       initialPitch: s.initialPitch ?? 0,
       panoramaImage: s.panoramaImage
-        ? { url: s.panoramaImage.url, thumbnailUrl: s.panoramaImage.thumbnailUrl }
+        ? {
+            url: `/api/media/${s.panoramaImage.storageKey}`,
+            thumbnailUrl: `/api/media/${s.panoramaImage.storageKey}`,
+          }
         : null,
       hotspots: s.hotspots.map((h: any) => ({
         id: h.id,

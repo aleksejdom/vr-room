@@ -1,40 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useEditorStore, useActiveScene } from "@/store/editorStore";
-import { PanoramaViewer } from "@/components/viewer/PanoramaViewer";
+import { PanoramaViewer, type PanoramaViewerRef } from "@/components/viewer/PanoramaViewer";
 import { SceneList } from "@/components/editor/SceneList";
 import { HotspotPanel } from "@/components/editor/HotspotPanel";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { ImageUploader } from "@/components/upload/ImageUploader";
 import { EmbedPanel } from "@/components/editor/EmbedPanel";
-import { confirmPanoramaUpload } from "@/lib/actions/tours";
-import { Button } from "@/components/ui/button";
+import { confirmPanoramaUpload, updateSceneViewport } from "@/lib/actions/tours";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HotspotModal } from "@/components/viewer/HotspotModal";
-import type { Tour, Hotspot } from "@/types/tour";
+import type { Tour, HotspotType } from "@/types/tour";
 import { toast } from "sonner";
-import { Image, Crosshair, Code } from "lucide-react";
+import { Image, Crosshair, Code, Bookmark } from "lucide-react";
+const RAD_TO_DEG = 180 / Math.PI;
+
+function getDefaultContent(type: HotspotType, scenes: { id: string }[], currentSceneId: string) {
+  switch (type) {
+    case "scene_link": {
+      const currentIndex = scenes.findIndex((s) => s.id === currentSceneId);
+      const nextScene =
+        scenes[currentIndex + 1] ?? scenes.find((s) => s.id !== currentSceneId);
+      return { targetSceneId: nextScene?.id ?? "", transitionType: "fade" };
+    }
+    case "info_text":  return { title: "Neue Info", description: "" };
+    case "url_link":   return { url: "https://", openInNewTab: true };
+    case "video":      return { videoUrl: "", autoplay: false };
+    case "image":      return { images: [] };
+  }
+}
 
 export function TourEditor({ initialTour }: { initialTour: Tour }) {
-  const { setTour, setActiveScene, isPlacingHotspot, confirmHotspotPosition,
-    setScenePanorama } = useEditorStore();
+  const {
+    tour,
+    setTour,
+    setActiveScene,
+    isPlacingHotspot,
+    cancelPlacingHotspot,
+    newHotspotType,
+    addHotspot,
+    updateHotspot,
+    setScenePanorama,
+    selectedHotspotId,
+    setSceneViewport,
+  } = useEditorStore();
   const activeScene = useActiveScene();
-  const [clickedHotspot, setClickedHotspot] = useState<Hotspot | null>(null);
-  const [rightTab, setRightTab] = useState("hotspots");
+  const viewerRef = useRef<PanoramaViewerRef>(null);
 
   useEffect(() => {
     setTour(initialTour);
   }, [initialTour, setTour]);
 
-  const handleSphereClick = (pitch: number, yaw: number) => {
-    if (isPlacingHotspot) {
-      confirmHotspotPosition(pitch, yaw);
+  // Instant hotspot creation on panorama click (Kuula-style)
+  const handleSphereClick = (pitchRad: number, yawRad: number) => {
+    if (!isPlacingHotspot || !activeScene) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = getDefaultContent(newHotspotType, tour?.scenes ?? [], activeScene.id) as any;
+    addHotspot(activeScene.id, {
+      id: crypto.randomUUID(),
+      sceneId: activeScene.id,
+      type: newHotspotType,
+      pitch: pitchRad * RAD_TO_DEG,
+      yaw: yawRad * RAD_TO_DEG,
+      label: "",
+      iconType: "arrow",
+      iconColor: "#ffffff",
+      order: activeScene.hotspots.length,
+      content,
+    });
+  };
+
+  const handleSaveView = async () => {
+    const pos = viewerRef.current?.getPosition();
+    if (!pos || !activeScene) return;
+    const result = await updateSceneViewport(activeScene.id, pos.yaw, pos.pitch);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      // Update store so switching scenes in this session uses the new viewport
+      setSceneViewport(activeScene.id, pos.yaw, pos.pitch);
+      toast.success(`Startansicht für "${activeScene.name}" gespeichert`);
     }
   };
 
-  const handleNavigate = (sceneId: string) => {
-    setActiveScene(sceneId);
+  const handleHotspotMove = (id: string, pitch: number, yaw: number) => {
+    if (!activeScene) return;
+    updateHotspot(activeScene.id, id, { pitch, yaw });
   };
 
   const handleUploadComplete = async (result: {
@@ -62,7 +113,12 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
       return;
     }
 
-    setScenePanorama(activeScene.id, { ...result, storageKey: result.key });
+    setScenePanorama(activeScene.id, {
+      ...result,
+      url: `/api/media/${result.key}`,
+      thumbnailUrl: `/api/media/${result.key}`,
+      storageKey: result.key,
+    });
     toast.success("360°-Bild hochgeladen");
   };
 
@@ -81,21 +137,32 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
           {activeScene?.panoramaImage ? (
             <>
               {isPlacingHotspot && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-amber-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-amber-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
                   <Crosshair className="h-3 w-3" />
-                  Klicke auf die gewünschte Position
+                  Klicke auf die Szene um den Hotspot zu platzieren
                 </div>
               )}
               <PanoramaViewer
+                ref={viewerRef}
                 imageUrl={activeScene.panoramaImage.url}
                 hotspots={activeScene.hotspots}
+                selectedHotspotId={selectedHotspotId}
                 initialYaw={activeScene.initialYaw}
                 initialPitch={activeScene.initialPitch}
-                onHotspotClick={setClickedHotspot}
+                onHotspotClick={(h) => useEditorStore.getState().selectHotspot(h.id)}
                 onSphereClick={handleSphereClick}
+                onHotspotMove={handleHotspotMove}
                 isEditorMode
                 isPlacingHotspot={isPlacingHotspot}
               />
+              <button
+                onClick={handleSaveView}
+                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white text-xs px-2.5 py-1.5 rounded-lg transition-colors backdrop-blur-sm"
+                title={`Aktuelle Kameraposition als Startansicht für "${activeScene.name}" speichern`}
+              >
+                <Bookmark className="h-3 w-3" />
+                Ansicht speichern · <span className="opacity-70 max-w-[80px] truncate">{activeScene.name}</span>
+              </button>
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-8">
@@ -127,7 +194,7 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
 
         {/* Right: Panels */}
         <aside className="w-64 border-l flex flex-col overflow-hidden bg-background">
-          <Tabs value={rightTab} onValueChange={setRightTab} className="flex flex-col h-full">
+          <Tabs defaultValue="hotspots" className="flex flex-col h-full">
             <TabsList className="grid grid-cols-3 mx-2 mt-2 h-7">
               <TabsTrigger value="hotspots" className="text-[11px] h-6">
                 <Crosshair className="h-3 w-3 mr-1" />
@@ -143,7 +210,7 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="hotspots" className="flex-1 overflow-hidden mt-0">
-              <HotspotPanel />
+              <HotspotPanel onCancelPlacing={cancelPlacingHotspot} />
             </TabsContent>
             <TabsContent value="upload" className="p-3 mt-0">
               {activeScene ? (
@@ -163,12 +230,6 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
           </Tabs>
         </aside>
       </div>
-
-      <HotspotModal
-        hotspot={clickedHotspot}
-        onClose={() => setClickedHotspot(null)}
-        onNavigate={handleNavigate}
-      />
     </div>
   );
 }

@@ -1,13 +1,14 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const r2 = new S3Client({
-  region: "auto",
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT!,
+  region: "us-east-1",
+  endpoint: process.env.MINIO_ENDPOINT!,
   credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.MINIO_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.MINIO_SECRET_ACCESS_KEY!,
   },
+  forcePathStyle: true,
 });
 
 export async function createPresignedUploadUrl(
@@ -18,7 +19,7 @@ export async function createPresignedUploadUrl(
   return getSignedUrl(
     r2,
     new PutObjectCommand({
-      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+      Bucket: process.env.MINIO_BUCKET_NAME!,
       Key: key,
       ContentType: contentType,
       ContentLength: contentLength,
@@ -30,12 +31,27 @@ export async function createPresignedUploadUrl(
 export async function deleteObject(key: string): Promise<void> {
   await r2.send(
     new DeleteObjectCommand({
-      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+      Bucket: process.env.MINIO_BUCKET_NAME!,
       Key: key,
     })
   );
 }
 
 export function getPublicUrl(key: string): string {
-  return `${process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL}/${key}`;
+  return `${process.env.NEXT_PUBLIC_MINIO_PUBLIC_URL}/${key}`;
+}
+
+export async function createPresignedGetUrl(key: string, expiresIn = 3600): Promise<string> {
+  return getSignedUrl(
+    r2,
+    new GetObjectCommand({
+      Bucket: process.env.MINIO_BUCKET_NAME!,
+      Key: key,
+    }),
+    { expiresIn }
+  );
+}
+
+export function getMediaProxyUrl(key: string): string {
+  return `/api/media/${key}`;
 }

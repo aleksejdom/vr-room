@@ -1,11 +1,13 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 const protectedRoutes = ["/dashboard", "/projects", "/tours"];
 const authRoutes = ["/sign-in", "/sign-up"];
 
-export default auth((req) => {
-  const { nextUrl, auth: session } = req;
+export async function proxy(request: NextRequest) {
+  const session = await auth();
+  const { nextUrl } = request;
   const isLoggedIn = !!session;
   const isProtected = protectedRoutes.some((r) => nextUrl.pathname.startsWith(r));
   const isAuthRoute = authRoutes.some((r) => nextUrl.pathname.startsWith(r));
@@ -19,7 +21,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|tour|embed).*)"],

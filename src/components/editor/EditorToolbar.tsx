@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useEditorStore } from "@/store/editorStore";
-import { useActiveScene } from "@/store/editorStore";
+import { useEditorStore, useActiveScene } from "@/store/editorStore";
 import { saveHotspots, publishTour, unpublishTour, setStartScene } from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,14 +34,22 @@ export function EditorToolbar() {
   if (!tour) return null;
 
   const handleSave = async () => {
-    if (!activeScene) return;
     setIsSaving(true);
     try {
-      await saveHotspots(activeScene.id, activeScene.hotspots);
+      // Save hotspots for ALL scenes in parallel
+      const results = await Promise.all(
+        tour.scenes.map((s) => saveHotspots(s.id, s.hotspots))
+      );
+      const failed = results.find((r) => r && "error" in r && r.error);
+      if (failed && "error" in failed) {
+        toast.error(failed.error ?? "Fehler beim Speichern");
+        return;
+      }
       markSaved();
       toast.success("Gespeichert");
-    } catch {
-      toast.error("Fehler beim Speichern");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Fehler beim Speichern";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }

@@ -2,27 +2,28 @@
 
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { Tour, Scene, Hotspot } from "@/types/tour";
+import type { Tour, Scene, Hotspot, HotspotType } from "@/types/tour";
 
 interface EditorState {
   tour: Tour | null;
   activeSceneId: string | null;
   selectedHotspotId: string | null;
   isPlacingHotspot: boolean;
-  pendingHotspotPosition: { pitch: number; yaw: number } | null;
+  newHotspotType: HotspotType;
   isDirty: boolean;
   isSaving: boolean;
 
   setTour: (tour: Tour) => void;
   setActiveScene: (sceneId: string) => void;
   selectHotspot: (hotspotId: string | null) => void;
+  setNewHotspotType: (type: HotspotType) => void;
   startPlacingHotspot: () => void;
   cancelPlacingHotspot: () => void;
-  confirmHotspotPosition: (pitch: number, yaw: number) => void;
   addHotspot: (sceneId: string, hotspot: Hotspot) => void;
   updateHotspot: (sceneId: string, hotspotId: string, updates: Partial<Hotspot>) => void;
   deleteHotspot: (sceneId: string, hotspotId: string) => void;
   updateScene: (sceneId: string, updates: Partial<Scene>) => void;
+  setSceneViewport: (sceneId: string, yaw: number, pitch: number) => void;
   reorderScenes: (sceneIds: string[]) => void;
   setScenePanorama: (
     sceneId: string,
@@ -38,7 +39,7 @@ export const useEditorStore = create<EditorState>()(
     activeSceneId: null,
     selectedHotspotId: null,
     isPlacingHotspot: false,
-    pendingHotspotPosition: null,
+    newHotspotType: "scene_link",
     isDirty: false,
     isSaving: false,
 
@@ -55,7 +56,6 @@ export const useEditorStore = create<EditorState>()(
         state.activeSceneId = sceneId;
         state.selectedHotspotId = null;
         state.isPlacingHotspot = false;
-        state.pendingHotspotPosition = null;
       }),
 
     selectHotspot: (hotspotId) =>
@@ -63,22 +63,19 @@ export const useEditorStore = create<EditorState>()(
         state.selectedHotspotId = hotspotId;
       }),
 
+    setNewHotspotType: (type) =>
+      set((state) => {
+        state.newHotspotType = type;
+      }),
+
     startPlacingHotspot: () =>
       set((state) => {
         state.isPlacingHotspot = true;
         state.selectedHotspotId = null;
-        state.pendingHotspotPosition = null;
       }),
 
     cancelPlacingHotspot: () =>
       set((state) => {
-        state.isPlacingHotspot = false;
-        state.pendingHotspotPosition = null;
-      }),
-
-    confirmHotspotPosition: (pitch, yaw) =>
-      set((state) => {
-        state.pendingHotspotPosition = { pitch, yaw };
         state.isPlacingHotspot = false;
       }),
 
@@ -89,7 +86,7 @@ export const useEditorStore = create<EditorState>()(
           scene.hotspots.push(hotspot);
           state.isDirty = true;
           state.selectedHotspotId = hotspot.id;
-          state.pendingHotspotPosition = null;
+          state.isPlacingHotspot = false;
         }
       }),
 
@@ -119,6 +116,16 @@ export const useEditorStore = create<EditorState>()(
         if (scene) {
           Object.assign(scene, updates);
           state.isDirty = true;
+        }
+      }),
+
+    // Updates viewport without marking isDirty — it's persisted separately
+    setSceneViewport: (sceneId, yaw, pitch) =>
+      set((state) => {
+        const scene = state.tour?.scenes.find((s) => s.id === sceneId);
+        if (scene) {
+          scene.initialYaw = yaw;
+          scene.initialPitch = pitch;
         }
       }),
 
