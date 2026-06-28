@@ -1,5 +1,6 @@
 "use client";
 
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { useState } from "react";
 import { registerUser } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ export default function SignUpPage() {
     try {
       const result = await registerUser(new FormData(e.currentTarget));
       if (result?.error) setError(result.error);
-    } catch {
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
       setError("Ein Fehler ist aufgetreten. Bitte versuche es erneut.");
     } finally {
       setLoading(false);

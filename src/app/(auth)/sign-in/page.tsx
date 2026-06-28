@@ -1,5 +1,6 @@
 "use client";
 
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { useState } from "react";
 import { loginUser } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ export default function SignInPage() {
     setError("");
     try {
       await loginUser(new FormData(e.currentTarget));
-    } catch {
+    } catch (err) {
+      if (isRedirectError(err)) throw err;
       setError("E-Mail oder Passwort falsch.");
     } finally {
       setLoading(false);
