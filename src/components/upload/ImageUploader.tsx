@@ -35,37 +35,17 @@ export function ImageUploader({ sceneId, onUploadComplete, className }: ImageUpl
       setErrorMessage("");
 
       try {
-        const res = await fetch("/api/upload/presign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            sceneId,
-          }),
-        });
+        const { key, url } = await uploadWithProgress(file, sceneId, setProgress);
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error ?? "Upload fehlgeschlagen");
-        }
-
-        const { presignedUrl, key, publicUrl } = await res.json();
-
-        await uploadWithProgress(file, presignedUrl, setProgress);
-
-        // Get image dimensions
         const dims = await getImageDimensions(file);
 
-        // Thumbnail is same as original for now
         const result: UploadResult = {
-          url: publicUrl,
+          url,
           key,
           width: dims.width,
           height: dims.height,
           fileSize: file.size,
-          thumbnailUrl: publicUrl,
+          thumbnailUrl: url,
         };
 
         setStatus("done");
@@ -150,22 +130,29 @@ export function ImageUploader({ sceneId, onUploadComplete, className }: ImageUpl
 
 function uploadWithProgress(
   file: File,
-  url: string,
+  sceneId: string,
   onProgress: (p: number) => void
-): Promise<void> {
+): Promise<{ key: string; url: string }> {
   return new Promise((resolve, reject) => {
+    const body = new FormData();
+    body.append("file", file);
+    body.append("sceneId", sceneId);
+
     const xhr = new XMLHttpRequest();
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) onProgress((e.loaded / e.total) * 100);
     });
     xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload fehlgeschlagen (${xhr.status})`));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        const msg = (() => { try { return JSON.parse(xhr.responseText).error; } catch { return null; } })();
+        reject(new Error(msg ?? `Upload fehlgeschlagen (${xhr.status})`));
+      }
     });
     xhr.addEventListener("error", () => reject(new Error("Netzwerkfehler")));
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type);
-    xhr.send(file);
+    xhr.open("POST", "/api/upload");
+    xhr.send(body);
   });
 }
 
