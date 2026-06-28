@@ -13,9 +13,9 @@ export function EmbedPanel() {
   const { tour } = useEditorStore();
   if (!tour) return null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = `${appUrl}/tour/${tour.slug}`;
-  const embedCode = getEmbedCode(tour.slug);
+  const embedCode = getEmbedCode(tour.slug, "100%", "600px", appUrl);
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

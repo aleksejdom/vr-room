@@ -26,7 +26,7 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function getEmbedCode(slug: string, width = "100%", height = "600px"): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `<iframe src="${appUrl}/embed/${slug}" width="${width}" height="${height}" frameborder="0" allow="fullscreen; gyroscope" loading="lazy"></iframe>`;
+export function getEmbedCode(slug: string, width = "100%", height = "600px", appUrl?: string): string {
+  const base = appUrl ?? (typeof window !== "undefined" ? window.location.origin : "");
+  return `<iframe src="${base}/embed/${slug}" width="${width}" height="${height}" frameborder="0" allow="fullscreen; gyroscope" loading="lazy"></iframe>`;
 }

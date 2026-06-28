@@ -78,7 +78,7 @@ export function EditorToolbar() {
     toast.success("Startszene gesetzt");
   };
 
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/tour/${tour.slug}`;
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/tour/${tour.slug}`;
 
   return (
     <header className="h-12 border-b bg-background flex items-center px-3 gap-3 z-10">
