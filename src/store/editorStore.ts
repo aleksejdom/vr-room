@@ -23,6 +23,7 @@ interface EditorState {
   updateHotspot: (sceneId: string, hotspotId: string, updates: Partial<Hotspot>) => void;
   deleteHotspot: (sceneId: string, hotspotId: string) => void;
   updateScene: (sceneId: string, updates: Partial<Scene>) => void;
+  setSceneName: (sceneId: string, name: string) => void;
   setSceneViewport: (sceneId: string, yaw: number, pitch: number) => void;
   reorderScenes: (sceneIds: string[]) => void;
   setScenePanorama: (
@@ -125,6 +126,13 @@ export const useEditorStore = create<EditorState>()(
           Object.assign(scene, updates);
           state.isDirty = true;
         }
+      }),
+
+    // Benennt eine Szene um, ohne isDirty zu setzen — wird sofort persistiert
+    setSceneName: (sceneId, name) =>
+      set((state) => {
+        const scene = state.tour?.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.name = name;
       }),
 
     // Updates viewport without marking isDirty — it's persisted separately

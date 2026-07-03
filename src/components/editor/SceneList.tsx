@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useEditorStore } from "@/store/editorStore";
-import { createScene, deleteScene, updateSceneOrder } from "@/lib/actions/tours";
+import { createScene, deleteScene, updateSceneOrder, updateSceneName } from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Star,
   GripVertical,
+  Pencil,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -27,14 +28,40 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function SceneList() {
-  const { tour, setActiveScene, activeSceneId, reorderScenes } = useEditorStore();
+  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName } = useEditorStore();
   const [newSceneName, setNewSceneName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   if (!tour) return null;
+
+  const startRename = (sceneId: string, currentName: string) => {
+    setRenameId(sceneId);
+    setRenameValue(currentName);
+  };
+
+  const commitRename = async () => {
+    const sceneId = renameId;
+    const name = renameValue.trim();
+    setRenameId(null);
+    if (!sceneId || !name) return;
+    const scene = tour.scenes.find((s) => s.id === sceneId);
+    if (!scene || scene.name === name) return;
+
+    // Optimistisch umbenennen, dann sofort persistieren
+    setSceneName(sceneId, name);
+    const result = await updateSceneName(sceneId, name);
+    if (result?.error) {
+      setSceneName(sceneId, scene.name);
+      toast.error(result.error);
+    } else {
+      toast.success("Szene umbenannt");
+    }
+  };
 
   const handleDrop = async () => {
     const from = dragId;
@@ -102,7 +129,7 @@ export function SceneList() {
             key={scene.id}
             role="button"
             tabIndex={0}
-            draggable
+            draggable={renameId !== scene.id}
             onDragStart={(e) => {
               setDragId(scene.id);
               e.dataTransfer.effectAllowed = "move";
@@ -156,20 +183,58 @@ export function SceneList() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{scene.name}</p>
+                {renameId === scene.id ? (
+                  <Input
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") commitRename();
+                      if (e.key === "Escape") setRenameId(null);
+                    }}
+                    onBlur={commitRename}
+                    className="h-6 text-xs px-1.5"
+                    autoFocus
+                  />
+                ) : (
+                  <p
+                    className="text-xs font-medium truncate"
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      startRename(scene.id, scene.name);
+                    }}
+                    title="Doppelklick zum Umbenennen"
+                  >
+                    {scene.name}
+                  </p>
+                )}
                 <p className="text-[10px] text-muted-foreground">
                   {scene.hotspots.length} Hotspot{scene.hotspots.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteId(scene.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 hover:opacity-100 p-1 hover:text-destructive transition-opacity"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startRename(scene.id, scene.name);
+                  }}
+                  className="p-1 hover:text-primary"
+                  title="Szene umbenennen"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteId(scene.id);
+                  }}
+                  className="p-1 hover:text-destructive"
+                  title="Szene löschen"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           </div>
         ))}

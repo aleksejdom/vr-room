@@ -152,6 +152,28 @@ export async function createScene(tourId: string, name: string) {
   return { scene };
 }
 
+export async function updateSceneName(sceneId: string, name: string) {
+  const userId = await requireAuth();
+
+  const scene = await db.query.scenes.findFirst({
+    where: eq(scenes.id, sceneId),
+    with: { tour: { with: { project: { columns: { ownerId: true } } } } },
+  });
+  if (!scene || scene.tour.project.ownerId !== userId) {
+    return { error: "Nicht gefunden." };
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 100) {
+    return { error: "Ungültiger Name." };
+  }
+
+  await db.update(scenes).set({ name: trimmed }).where(eq(scenes.id, sceneId));
+
+  revalidatePath(`/tours/${scene.tourId}`);
+  return { success: true };
+}
+
 export async function deleteScene(tourId: string, sceneId: string) {
   const userId = await requireAuth();
   const tour = await requireTourOwnership(tourId, userId);
