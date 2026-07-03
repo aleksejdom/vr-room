@@ -46,8 +46,16 @@ export const useEditorStore = create<EditorState>()(
     setTour: (tour) =>
       set((state) => {
         state.tour = tour;
-        state.activeSceneId =
-          tour.startSceneId ?? tour.scenes[0]?.id ?? null;
+        // Keep the currently edited scene when the tour is refreshed
+        // (e.g. after revalidatePath from "Ansicht speichern" or upload);
+        // only fall back to the start scene if it no longer exists.
+        const activeStillExists =
+          state.activeSceneId != null &&
+          tour.scenes.some((s) => s.id === state.activeSceneId);
+        if (!activeStillExists) {
+          state.activeSceneId =
+            tour.startSceneId ?? tour.scenes[0]?.id ?? null;
+        }
         state.isDirty = false;
       }),
 
