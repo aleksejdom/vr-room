@@ -15,6 +15,14 @@ import { toast } from "sonner";
 import { Image, Crosshair, Code, Bookmark } from "lucide-react";
 const RAD_TO_DEG = 180 / Math.PI;
 
+const DEFAULT_ICON_BY_TYPE: Record<HotspotType, string> = {
+  scene_link: "arrow",
+  info_text: "info",
+  url_link: "link",
+  video: "play",
+  image: "camera",
+};
+
 function getDefaultContent(type: HotspotType, scenes: { id: string }[], currentSceneId: string) {
   switch (type) {
     case "scene_link": {
@@ -63,7 +71,7 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
       pitch: pitchRad * RAD_TO_DEG,
       yaw: yawRad * RAD_TO_DEG,
       label: "",
-      iconType: "arrow",
+      iconType: DEFAULT_ICON_BY_TYPE[newHotspotType] ?? "arrow",
       iconColor: "#ffffff",
       order: activeScene.hotspots.length,
       content,

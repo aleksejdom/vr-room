@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { Hotspot } from "@/types/tour";
+import { getHotspotIcon } from "@/lib/hotspot-icons";
 
 const RAD_TO_DEG = 180 / Math.PI;
 const DEG_TO_RAD = Math.PI / 180;
@@ -318,16 +319,21 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
 
 function buildHotspotHtml(h: Hotspot, selected: boolean): string {
   const color  = h.iconColor ?? "#ffffff";
+  const icon   = getHotspotIcon(h.iconType);
   const selRing = selected
     ? `<circle cx="22" cy="22" r="20" stroke="#22d3ee" stroke-width="2.5" fill="none" stroke-dasharray="4 2"/>`
     : "";
+  // Glyph als verschachteltes 20x20-SVG mittig im 44px-Marker; currentColor
+  // aus der Icon-Definition wird über das color-Attribut aufgelöst.
   return `
     <div style="width:44px;height:44px;cursor:grab;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));">
-      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" color="${color}">
         ${selRing}
         <circle cx="22" cy="22" r="17" stroke="${color}" stroke-width="2" fill="rgba(0,0,0,0.35)"/>
-        <circle cx="22" cy="22" r="9"  stroke="${color}" stroke-width="2" fill="rgba(0,0,0,0.2)"/>
-        <circle cx="22" cy="22" r="3"  fill="${color}"/>
+        <svg x="12" y="12" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          ${icon.svg}
+        </svg>
       </svg>
     </div>`;
 }

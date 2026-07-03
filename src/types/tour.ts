@@ -9,7 +9,8 @@ interface BaseHotspot {
   pitch: number;
   yaw: number;
   label?: string;
-  iconType: "arrow" | "info" | "link" | "play" | "image" | "custom";
+  /** Icon-ID aus HOTSPOT_ICONS (src/lib/hotspot-icons.ts) */
+  iconType: string;
   iconColor: string;
   order: number;
 }

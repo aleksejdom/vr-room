@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Crosshair, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import type { Hotspot, HotspotType } from "@/types/tour";
+import { HOTSPOT_ICONS } from "@/lib/hotspot-icons";
 
 interface HotspotPanelProps {
   onCancelPlacing: () => void;
@@ -178,6 +179,40 @@ function HotspotEditor({
           className="h-7 text-xs"
           placeholder="Beschriftung..."
         />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-[11px]">Icon</Label>
+        <div className="grid grid-cols-6 gap-1">
+          {HOTSPOT_ICONS.map((icon) => {
+            const isSelected = (hotspot.iconType ?? "arrow") === icon.id;
+            return (
+              <button
+                key={icon.id}
+                type="button"
+                title={icon.label}
+                onClick={() => onUpdate({ iconType: icon.id })}
+                className={`flex items-center justify-center h-8 rounded-md border transition-colors ${
+                  isSelected
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  dangerouslySetInnerHTML={{ __html: icon.svg }}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="space-y-1">
