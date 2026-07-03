@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
+import type { Hotspot } from "@/types/tour";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     columns: { name: true, status: true },
   });
   if (!tour || tour.status !== "published") return { title: "Tour nicht gefunden" };
-  return { title: `${tour.name} – VR Rooms` };
+  return { title: `${tour.name} – VR-Rooms by Domowets` };
 }
 
 async function getTourBySlug(slug: string) {
@@ -50,14 +51,15 @@ export default async function PublicTourPage({ params }: Props) {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeTour(tour: any) {
+type TourWithScenes = NonNullable<Awaited<ReturnType<typeof getTourBySlug>>>;
+
+function serializeTour(tour: TourWithScenes) {
   return {
     id: tour.id,
     name: tour.name,
     slug: tour.slug,
     startSceneId: tour.startSceneId,
-    scenes: tour.scenes.map((s: any) => ({
+    scenes: tour.scenes.map((s) => ({
       id: s.id,
       name: s.name,
       order: s.order,
@@ -69,7 +71,7 @@ function serializeTour(tour: any) {
             thumbnailUrl: `/api/media/${s.panoramaImage.storageKey}`,
           }
         : null,
-      hotspots: s.hotspots.map((h: any) => ({
+      hotspots: s.hotspots.map((h) => ({
         id: h.id,
         sceneId: h.sceneId,
         type: h.type,
@@ -80,7 +82,7 @@ function serializeTour(tour: any) {
         iconColor: h.iconColor ?? "#ffffff",
         order: h.order ?? 0,
         content: h.content,
-      })),
+      }) as Hotspot),
     })),
   };
 }

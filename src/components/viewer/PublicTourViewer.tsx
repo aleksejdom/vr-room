@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import Image from "next/image";
 import { PanoramaViewer, type PanoramaViewerRef } from "@/components/viewer/PanoramaViewer";
 import { HotspotModal } from "@/components/viewer/HotspotModal";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,7 @@ interface PublicTourViewerProps {
   isEmbed?: boolean;
 }
 
-export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }: PublicTourViewerProps) {
+export function PublicTourViewer({ tour, showBranding = true }: PublicTourViewerProps) {
   const sessionId     = useRef(nanoid());
   const viewerRef     = useRef<PanoramaViewerRef>(null);
   const navigatingRef = useRef(false);
@@ -47,18 +48,21 @@ export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }:
   const activeScene = tour.scenes.find((s) => s.id === activeSceneId) ?? tour.scenes[0];
 
   // Analytics
-  useEffect(() => { trackEvent("tour_view"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const trackEvent = useCallback(
+    async (eventType: string, sceneId?: string, hotspotId?: string) => {
+      await fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tourId: tour.id, sceneId, hotspotId, eventType, sessionId: sessionId.current }),
+      }).catch(() => {});
+    },
+    [tour.id]
+  );
+
+  useEffect(() => { trackEvent("tour_view"); }, [trackEvent]);
   useEffect(() => {
     if (activeSceneId) trackEvent("scene_view", activeSceneId);
-  }, [activeSceneId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const trackEvent = async (eventType: string, sceneId?: string, hotspotId?: string) => {
-    await fetch("/api/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tourId: tour.id, sceneId, hotspotId, eventType, sessionId: sessionId.current }),
-    }).catch(() => {});
-  };
+  }, [activeSceneId, trackEvent]);
 
   // Auto-scroll active thumbnail into view
   useEffect(() => {
@@ -107,7 +111,8 @@ export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }:
       <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-black/60 to-transparent flex items-center px-4 gap-3 pointer-events-none">
         {showBranding && (
           <span className="text-white font-semibold text-sm">
-            VR<span className="text-blue-400">Rooms</span>
+            VR<span className="text-blue-400">-Rooms</span>
+            <span className="ml-1.5 text-[10px] font-normal text-white/50">by Domowets</span>
           </span>
         )}
         <span className="text-white/70 text-xs">{activeScene.name}</span>
@@ -120,7 +125,7 @@ export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }:
           <div className="flex justify-center">
             <button
               onClick={() => setStripVisible((v) => !v)}
-              className="bg-black/70 hover:bg-black/90 text-white/50 hover:text-white/90 transition-colors px-5 py-0.5 rounded-t-md flex items-center"
+              className="bg-black/50 backdrop-blur-md hover:bg-black/70 text-white/50 hover:text-white/90 transition-colors px-5 py-0.5 rounded-t-md flex items-center"
               aria-label={stripVisible ? "Szenenleiste ausblenden" : "Szenenleiste einblenden"}
             >
               {stripVisible
@@ -132,7 +137,7 @@ export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }:
           {/* Thumbnail strip */}
           <div
             className={cn(
-              "bg-black transition-all duration-300 overflow-hidden",
+              "bg-black/50 backdrop-blur-xl transition-all duration-300 overflow-hidden",
               stripVisible ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
             )}
           >
@@ -157,9 +162,12 @@ export function PublicTourViewer({ tour, showBranding = true, isEmbed = false }:
                     style={{ width: 96, height: 60 }}
                   >
                     {scene.panoramaImage ? (
-                      <img
+                      <Image
                         src={scene.panoramaImage.thumbnailUrl ?? scene.panoramaImage.url}
                         alt={scene.name}
+                        width={96}
+                        height={60}
+                        quality={60}
                         className="w-full h-full object-cover"
                         draggable={false}
                       />

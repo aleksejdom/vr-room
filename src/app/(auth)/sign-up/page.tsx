@@ -30,12 +30,11 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Konto erstellen</CardTitle>
-          <CardDescription>Starte kostenlos mit VR Rooms</CardDescription>
-        </CardHeader>
+    <Card className="w-full glass-strong rounded-2xl">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Konto erstellen</CardTitle>
+        <CardDescription>Starte kostenlos mit VR-Rooms</CardDescription>
+      </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
@@ -90,8 +89,7 @@ export default function SignUpPage() {
               </Link>
             </p>
           </CardFooter>
-        </form>
-      </Card>
-    </div>
+      </form>
+    </Card>
   );
 }

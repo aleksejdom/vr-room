@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { projects, tours } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { projects } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,33 +41,29 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Projekte</CardDescription>
-            <CardTitle className="text-3xl">{userProjects.length}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Free Plan: 1 Projekt</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Touren gesamt</CardDescription>
-            <CardTitle className="text-3xl">{totalTours}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Free Plan: max. 3 Touren</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Veröffentlicht</CardDescription>
-            <CardTitle className="text-3xl">{publishedTours}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Öffentlich zugänglich</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Projekte", value: userProjects.length, hint: "Free Plan: 1 Projekt", icon: FolderOpen },
+          { label: "Touren gesamt", value: totalTours, hint: "Free Plan: max. 3 Touren", icon: FileText },
+          { label: "Veröffentlicht", value: publishedTours, hint: "Öffentlich zugänglich", icon: Globe },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label} className="glass rounded-2xl">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardDescription>{stat.label}</CardDescription>
+                  <div className="p-2 rounded-xl bg-primary/10">
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                </div>
+                <CardTitle className="text-3xl">{stat.value}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">{stat.hint}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between">
@@ -79,7 +75,7 @@ export default async function DashboardPage() {
       </div>
 
       {userProjects.length === 0 ? (
-        <Card className="border-dashed">
+        <Card className="glass rounded-2xl border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
             <div className="p-4 rounded-full bg-muted">
               <FolderOpen className="h-8 w-8 text-muted-foreground" />
@@ -99,7 +95,7 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid gap-4">
           {userProjects.map((project) => (
-            <Card key={project.id}>
+            <Card key={project.id} className="glass rounded-2xl">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>

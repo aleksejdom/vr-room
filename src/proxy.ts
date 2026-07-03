@@ -8,7 +8,7 @@ const authRoutes = ["/sign-in", "/sign-up"];
 export async function proxy(request: NextRequest) {
   const session = await auth();
   const { nextUrl } = request;
-  const isLoggedIn = !!session;
+  const isLoggedIn = !!session?.user;
   const isProtected = protectedRoutes.some((r) => nextUrl.pathname.startsWith(r));
   const isAuthRoute = authRoutes.some((r) => nextUrl.pathname.startsWith(r));
 

@@ -29,12 +29,11 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Anmelden</CardTitle>
-          <CardDescription>Willkommen zurück bei VR Rooms</CardDescription>
-        </CardHeader>
+    <Card className="w-full glass-strong rounded-2xl">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Anmelden</CardTitle>
+        <CardDescription>Willkommen zurück bei VR-Rooms</CardDescription>
+      </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
@@ -77,8 +76,7 @@ export default function SignInPage() {
               </Link>
             </p>
           </CardFooter>
-        </form>
-      </Card>
-    </div>
+      </form>
+    </Card>
   );
 }

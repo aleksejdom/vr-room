@@ -22,10 +22,13 @@ export function DashboardNav({ user }: { user: { name?: string | null; email?: s
   const pathname = usePathname();
 
   return (
-    <header className="h-14 border-b bg-background sticky top-0 z-40">
+    <header className="h-14 sticky top-0 z-40 glass-strong border-x-0 border-t-0 rounded-none">
       <div className="container max-w-6xl mx-auto px-4 h-full flex items-center gap-6">
         <Link href="/dashboard" className="font-bold text-lg tracking-tight">
-          VR<span className="text-primary">Rooms</span>
+          VR<span className="text-primary">-Rooms</span>
+          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground align-middle hidden md:inline">
+            by Domowets
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1">

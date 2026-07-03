@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useEditorStore, useActiveScene } from "@/store/editorStore";
+import Image from "next/image";
+import { useEditorStore } from "@/store/editorStore";
 import { createScene, deleteScene } from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export function SceneList() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {tour.scenes.map((scene, idx) => (
+        {tour.scenes.map((scene) => (
           <div
             key={scene.id}
             role="button"
@@ -85,9 +86,12 @@ export function SceneList() {
             <div className="flex items-center gap-2 p-2">
               <div className="relative flex-shrink-0 w-14 h-10 rounded bg-muted overflow-hidden">
                 {scene.panoramaImage ? (
-                  <img
+                  <Image
                     src={scene.panoramaImage.thumbnailUrl ?? scene.panoramaImage.url}
                     alt={scene.name}
+                    width={56}
+                    height={40}
+                    quality={60}
                     className="w-full h-full object-cover"
                   />
                 ) : (

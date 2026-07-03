@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
+import type { Hotspot } from "@/types/tour";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -45,13 +46,12 @@ export default async function EmbedPage({ params }: Props) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serialized = {
     id: tour.id,
     name: tour.name,
     slug: tour.slug,
     startSceneId: tour.startSceneId,
-    scenes: tour.scenes.map((s: any) => ({
+    scenes: tour.scenes.map((s) => ({
       id: s.id,
       name: s.name,
       order: s.order,
@@ -63,7 +63,7 @@ export default async function EmbedPage({ params }: Props) {
             thumbnailUrl: `/api/media/${s.panoramaImage.storageKey}`,
           }
         : null,
-      hotspots: s.hotspots.map((h: any) => ({
+      hotspots: s.hotspots.map((h) => ({
         id: h.id,
         sceneId: h.sceneId,
         type: h.type,
@@ -74,7 +74,7 @@ export default async function EmbedPage({ params }: Props) {
         iconColor: h.iconColor ?? "#ffffff",
         order: h.order ?? 0,
         content: h.content,
-      })),
+      }) as Hotspot),
     })),
   };
 
