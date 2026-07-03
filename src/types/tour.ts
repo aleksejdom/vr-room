@@ -1,4 +1,4 @@
-export type HotspotType = "scene_link" | "info_text" | "url_link" | "image" | "video";
+export type HotspotType = "scene_link" | "info_text" | "url_link" | "image" | "video" | "room_label";
 
 export type PlanType = "free" | "starter" | "pro" | "agency";
 export type TourStatus = "draft" | "published" | "archived";
@@ -56,12 +56,21 @@ export interface ImageHotspot extends BaseHotspot {
   };
 }
 
+/** Beschilderung: Text wird direkt im Panorama angezeigt, kein Klick nötig */
+export interface RoomLabelHotspot extends BaseHotspot {
+  type: "room_label";
+  content: {
+    text: string;
+  };
+}
+
 export type Hotspot =
   | SceneLinkHotspot
   | InfoTextHotspot
   | UrlLinkHotspot
   | VideoHotspot
-  | ImageHotspot;
+  | ImageHotspot
+  | RoomLabelHotspot;
 
 export interface PanoramaImage {
   id: string;

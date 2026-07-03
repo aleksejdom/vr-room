@@ -120,7 +120,7 @@ export const hotspots = pgTable("hotspots", {
     .references(() => scenes.id, { onDelete: "cascade" })
     .notNull(),
   type: text("type", {
-    enum: ["scene_link", "info_text", "url_link", "image", "video"],
+    enum: ["scene_link", "info_text", "url_link", "image", "video", "room_label"],
   }).notNull(),
   pitch: real("pitch").notNull(),
   yaw: real("yaw").notNull(),

@@ -21,6 +21,7 @@ const DEFAULT_ICON_BY_TYPE: Record<HotspotType, string> = {
   url_link: "link",
   video: "play",
   image: "camera",
+  room_label: "arrow", // ungenutzt — Räumlichkeiten rendern Text statt Icon
 };
 
 function getDefaultContent(type: HotspotType, scenes: { id: string }[], currentSceneId: string) {
@@ -35,6 +36,7 @@ function getDefaultContent(type: HotspotType, scenes: { id: string }[], currentS
     case "url_link":   return { url: "https://", openInNewTab: true };
     case "video":      return { videoUrl: "", autoplay: false };
     case "image":      return { images: [] };
+    case "room_label": return { text: "Neuer Raum" };
   }
 }
 

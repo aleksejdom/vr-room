@@ -76,6 +76,8 @@ export function PublicTourViewer({ tour, showBranding = true }: PublicTourViewer
   }, []);
 
   const handleHotspotClick = async (hotspot: Hotspot) => {
+    // Raum-Schilder sind reine Beschriftung, nicht interaktiv
+    if (hotspot.type === "room_label") return;
     trackEvent("hotspot_click", activeSceneId ?? undefined, hotspot.id);
     if (hotspot.type === "scene_link") {
       if (navigatingRef.current) return;

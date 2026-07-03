@@ -79,10 +79,14 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           id: h.id,
           position: { yaw: `${h.yaw}deg`, pitch: `${h.pitch}deg` },
           html: buildHotspotHtml(h, h.id === selId),
-          size: { width: 44, height: 44 },
+          // Raum-Schilder passen sich dem Text an, Icon-Marker sind fix 44px
+          size: h.type === "room_label" ? undefined : { width: 44, height: 44 },
           anchor: "center center",
           data: h,
-          tooltip: h.label ? { content: h.label, position: "top center" } : undefined,
+          tooltip:
+            h.label && h.type !== "room_label"
+              ? { content: h.label, position: "top center" }
+              : undefined,
         })),
       []
     );
@@ -317,8 +321,34 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
   }
 );
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function buildHotspotHtml(h: Hotspot, selected: boolean): string {
   const color  = h.iconColor ?? "#ffffff";
+
+  // Räumlichkeit: Text direkt als lesbares Schild rendern statt Icon
+  if (h.type === "room_label") {
+    const text = escapeHtml(h.content?.text || h.label || "Raum");
+    const selStyle = selected ? "outline:2px dashed #22d3ee;outline-offset:3px;" : "";
+    return `
+      <div style="
+        display:inline-block;cursor:grab;white-space:nowrap;
+        padding:6px 14px;border-radius:9999px;
+        background:rgba(10,12,20,0.55);
+        border:1px solid rgba(255,255,255,0.25);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        color:${color};font-size:14px;font-weight:600;letter-spacing:0.02em;
+        text-shadow:0 1px 3px rgba(0,0,0,0.6);
+        box-shadow:0 2px 10px rgba(0,0,0,0.35);
+        ${selStyle}
+      ">${text}</div>`;
+  }
   const icon   = getHotspotIcon(h.iconType);
   const selRing = selected
     ? `<circle cx="22" cy="22" r="20" stroke="#22d3ee" stroke-width="2.5" fill="none" stroke-dasharray="4 2"/>`

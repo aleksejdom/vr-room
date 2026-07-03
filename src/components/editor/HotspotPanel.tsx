@@ -77,6 +77,7 @@ export function HotspotPanel({ onCancelPlacing }: HotspotPanelProps) {
                 <SelectItem value="url_link">Externer Link</SelectItem>
                 <SelectItem value="video">Video</SelectItem>
                 <SelectItem value="image">Bild</SelectItem>
+                <SelectItem value="room_label">Räumlichkeit</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -114,7 +115,9 @@ export function HotspotPanel({ onCancelPlacing }: HotspotPanelProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">
-                    {h.label || getTypeLabel(h.type)}
+                    {h.type === "room_label"
+                      ? h.content.text || "Raum"
+                      : h.label || getTypeLabel(h.type)}
                   </span>
                   <Badge variant="outline" className="text-[9px] h-4 px-1 shrink-0 ml-1">
                     {getTypeLabel(h.type)}
@@ -171,16 +174,32 @@ function HotspotEditor({
         </Button>
       </div>
 
-      <div className="space-y-1">
-        <Label className="text-[11px]">Label (optional)</Label>
-        <Input
-          value={hotspot.label ?? ""}
-          onChange={(e) => onUpdate({ label: e.target.value })}
-          className="h-7 text-xs"
-          placeholder="Beschriftung..."
-        />
-      </div>
+      {hotspot.type === "room_label" ? (
+        <div className="space-y-1">
+          <Label className="text-[11px]">Text (wird direkt angezeigt)</Label>
+          <Input
+            value={hotspot.content.text ?? ""}
+            onChange={(e) =>
+              onUpdate({ content: { text: e.target.value } } as Partial<Hotspot>)
+            }
+            className="h-7 text-xs"
+            placeholder="z.B. Wohnzimmer"
+            autoFocus
+          />
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <Label className="text-[11px]">Label (optional)</Label>
+          <Input
+            value={hotspot.label ?? ""}
+            onChange={(e) => onUpdate({ label: e.target.value })}
+            className="h-7 text-xs"
+            placeholder="Beschriftung..."
+          />
+        </div>
+      )}
 
+      {hotspot.type !== "room_label" && (
       <div className="space-y-1">
         <Label className="text-[11px]">Icon</Label>
         <div className="grid grid-cols-6 gap-1">
@@ -214,9 +233,12 @@ function HotspotEditor({
           })}
         </div>
       </div>
+      )}
 
       <div className="space-y-1">
-        <Label className="text-[11px]">Icon-Farbe</Label>
+        <Label className="text-[11px]">
+          {hotspot.type === "room_label" ? "Textfarbe" : "Icon-Farbe"}
+        </Label>
         <div className="flex items-center gap-2">
           <input
             type="color"
@@ -320,6 +342,7 @@ function getTypeLabel(type: string): string {
     url_link: "Link",
     video: "Video",
     image: "Bild",
+    room_label: "Raum",
   };
   return labels[type] ?? type;
 }
