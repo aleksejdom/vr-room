@@ -3,15 +3,17 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useEditorStore } from "@/store/editorStore";
-import { createScene, deleteScene } from "@/lib/actions/tours";
+import { createScene, deleteScene, updateSceneOrder } from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Plus,
   Trash2,
   Image as ImageIcon,
   Star,
+  GripVertical,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -25,12 +27,38 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function SceneList() {
-  const { tour, setActiveScene, activeSceneId } = useEditorStore();
+  const { tour, setActiveScene, activeSceneId, reorderScenes } = useEditorStore();
   const [newSceneName, setNewSceneName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   if (!tour) return null;
+
+  const handleDrop = async () => {
+    const from = dragId;
+    const to = overId;
+    setDragId(null);
+    setOverId(null);
+    if (!from || !to || from === to) return;
+
+    const ids = tour.scenes.map((s) => s.id);
+    const fromIdx = ids.indexOf(from);
+    const toIdx = ids.indexOf(to);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, from);
+
+    // Optimistisch umsortieren, dann sofort persistieren
+    reorderScenes(ids);
+    const result = await updateSceneOrder(tour.id, ids);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Reihenfolge gespeichert");
+    }
+  };
 
   const handleAddScene = async () => {
     const name = newSceneName.trim() || `Szene ${tour.scenes.length + 1}`;
@@ -74,16 +102,38 @@ export function SceneList() {
             key={scene.id}
             role="button"
             tabIndex={0}
+            draggable
+            onDragStart={(e) => {
+              setDragId(scene.id);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (overId !== scene.id) setOverId(scene.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop();
+            }}
+            onDragEnd={() => {
+              setDragId(null);
+              setOverId(null);
+            }}
             onClick={() => setActiveScene(scene.id)}
             onKeyDown={(e) => e.key === "Enter" && setActiveScene(scene.id)}
             className={cn(
               "group w-full text-left rounded-lg overflow-hidden border transition-all cursor-pointer",
               activeSceneId === scene.id
                 ? "border-primary bg-primary/5 ring-1 ring-primary"
-                : "border-transparent hover:border-border hover:bg-muted/50"
+                : "border-transparent hover:border-border hover:bg-muted/50",
+              dragId === scene.id && "opacity-40",
+              overId === scene.id && dragId !== null && dragId !== scene.id &&
+                "border-primary border-dashed bg-primary/10"
             )}
           >
-            <div className="flex items-center gap-2 p-2">
+            <div className="flex items-center gap-1.5 p-2">
+              <GripVertical className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing" />
               <div className="relative flex-shrink-0 w-14 h-10 rounded bg-muted overflow-hidden">
                 {scene.panoramaImage ? (
                   <Image

@@ -137,6 +137,8 @@ export const useEditorStore = create<EditorState>()(
         }
       }),
 
+    // Ordnet Szenen neu, ohne isDirty zu setzen — die Reihenfolge wird
+    // direkt beim Drop über updateSceneOrder persistiert.
     reorderScenes: (sceneIds) =>
       set((state) => {
         if (!state.tour) return;
@@ -148,7 +150,6 @@ export const useEditorStore = create<EditorState>()(
           })
           .filter(Boolean) as Scene[];
         state.tour.scenes = ordered;
-        state.isDirty = true;
       }),
 
     setScenePanorama: (sceneId, panorama) =>
