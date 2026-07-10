@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { tours } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { preload } from "react-dom";
 import type { Metadata } from "next";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
 import type { Hotspot } from "@/types/tour";
@@ -43,6 +44,14 @@ export default async function PublicTourPage({ params }: Props) {
   if (!tour || tour.status !== "published") notFound();
 
   const serialized = serializeTour(tour);
+
+  // Startpanorama schon mit dem HTML anstoßen, statt erst nach Hydration.
+  // PSV lädt per fetch() → as:"fetch" + crossOrigin, damit der Preload matcht.
+  const startScene =
+    serialized.scenes.find((s) => s.id === serialized.startSceneId) ?? serialized.scenes[0];
+  if (startScene?.panoramaImage) {
+    preload(startScene.panoramaImage.url, { as: "fetch", crossOrigin: "anonymous" });
+  }
 
   return (
     <div className="h-screen w-full bg-black">

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { tours } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { preload } from "react-dom";
 import { headers } from "next/headers";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
 import type { Hotspot } from "@/types/tour";
@@ -77,6 +78,14 @@ export default async function EmbedPage({ params }: Props) {
       }) as Hotspot),
     })),
   };
+
+  // Startpanorama schon mit dem HTML anstoßen, statt erst nach Hydration.
+  // PSV lädt per fetch() → as:"fetch" + crossOrigin, damit der Preload matcht.
+  const startScene =
+    serialized.scenes.find((s) => s.id === serialized.startSceneId) ?? serialized.scenes[0];
+  if (startScene?.panoramaImage) {
+    preload(startScene.panoramaImage.url, { as: "fetch", crossOrigin: "anonymous" });
+  }
 
   return (
     <html>

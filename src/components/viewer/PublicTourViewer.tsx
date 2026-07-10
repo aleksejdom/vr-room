@@ -5,7 +5,7 @@ import Image from "next/image";
 import { PanoramaViewer, type PanoramaViewerRef } from "@/components/viewer/PanoramaViewer";
 import { HotspotModal } from "@/components/viewer/HotspotModal";
 import { cn } from "@/lib/utils";
-import type { Hotspot } from "@/types/tour";
+import type { Hotspot, SceneLinkHotspot } from "@/types/tour";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { nanoid } from "nanoid";
 
@@ -63,6 +63,44 @@ export function PublicTourViewer({ tour, showBranding = true }: PublicTourViewer
   useEffect(() => {
     if (activeSceneId) trackEvent("scene_view", activeSceneId);
   }, [activeSceneId, trackEvent]);
+
+  // Panoramen der übrigen Szenen im Hintergrund in den HTTP-Cache laden
+  // (immutable gecacht), damit Szenenwechsel ohne Netzwerk-Wartezeit laufen.
+  // Reihenfolge: von der aktiven Szene verlinkte Szenen zuerst, dann der Rest.
+  const preloadedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const current = tour.scenes.find((s) => s.id === activeSceneId);
+    if (current?.panoramaImage) preloadedRef.current.add(current.panoramaImage.url);
+
+    const linkedScenes = (current?.hotspots ?? [])
+      .filter((h): h is SceneLinkHotspot => h.type === "scene_link")
+      .map((h) => tour.scenes.find((s) => s.id === h.content.targetSceneId));
+    const urls = [...linkedScenes, ...tour.scenes]
+      .map((s) => s?.panoramaImage?.url)
+      .filter((u): u is string => !!u);
+    const queue = [...new Set(urls)].filter((u) => !preloadedRef.current.has(u));
+    if (queue.length === 0) return;
+
+    let cancelled = false;
+    // Kurz warten, damit das aktive Panorama zuerst Bandbreite bekommt
+    const timer = setTimeout(async () => {
+      for (const url of queue) {
+        if (cancelled) return;
+        if (preloadedRef.current.has(url)) continue;
+        try {
+          const res = await fetch(url, { priority: "low" } as RequestInit);
+          await res.blob(); // Body vollständig lesen, sonst landet er nicht im Cache
+          preloadedRef.current.add(url);
+        } catch {
+          // Offline o.ä. — Szene lädt dann beim Klick regulär
+        }
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [activeSceneId, tour.scenes]);
 
   // Auto-scroll active thumbnail into view
   useEffect(() => {
