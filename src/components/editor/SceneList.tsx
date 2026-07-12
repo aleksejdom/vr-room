@@ -97,6 +97,7 @@ export function SceneList() {
         hotspots: [],
         initialYaw: result.scene.initialYaw ?? 0,
         initialPitch: result.scene.initialPitch ?? 0,
+        initialZoom: result.scene.initialZoom ?? 50,
         ambientAudio: result.scene.ambientAudio ?? null,
       });
       setActiveScene(result.scene.id);

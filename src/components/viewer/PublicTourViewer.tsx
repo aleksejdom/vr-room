@@ -15,6 +15,7 @@ interface PublicScene {
   order: number;
   initialYaw: number;
   initialPitch: number;
+  initialZoom: number;
   panoramaImage: { url: string; thumbnailUrl: string | null } | null;
   hotspots: Hotspot[];
 }
@@ -144,6 +145,7 @@ export function PublicTourViewer({ tour, showBranding = true }: PublicTourViewer
         hotspots={activeScene.hotspots}
         initialYaw={activeScene.initialYaw}
         initialPitch={activeScene.initialPitch}
+        initialZoom={activeScene.initialZoom}
         onHotspotClick={handleHotspotClick}
       />
 

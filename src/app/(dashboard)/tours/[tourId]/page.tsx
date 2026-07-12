@@ -39,6 +39,7 @@ export default async function TourEditorPage({ params }: { params: Promise<{ tou
       order: s.order,
       initialYaw: s.initialYaw ?? 0,
       initialPitch: s.initialPitch ?? 0,
+      initialZoom: s.initialZoom ?? 50,
       ambientAudio: s.ambientAudio ?? null,
       panoramaImage: s.panoramaImage
         ? {

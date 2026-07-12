@@ -90,6 +90,7 @@ export interface Scene {
   order: number;
   initialYaw: number;
   initialPitch: number;
+  initialZoom: number;
   ambientAudio: string | null;
   panoramaImage: PanoramaImage | null;
   hotspots: Hotspot[];

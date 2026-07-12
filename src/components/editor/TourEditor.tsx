@@ -88,13 +88,13 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
       return;
     }
     try {
-      const result = await updateSceneViewport(activeScene.id, pos.yaw, pos.pitch);
+      const result = await updateSceneViewport(activeScene.id, pos.yaw, pos.pitch, pos.zoom);
       if (result?.error) {
         toast.error(result.error);
         return;
       }
       // Update store so switching scenes in this session uses the new viewport
-      setSceneViewport(activeScene.id, pos.yaw, pos.pitch);
+      setSceneViewport(activeScene.id, pos.yaw, pos.pitch, pos.zoom);
       toast.success(`Startansicht für "${activeScene.name}" gespeichert`);
     } catch {
       toast.error("Speichern fehlgeschlagen — Verbindung prüfen");
@@ -167,6 +167,7 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
                 selectedHotspotId={selectedHotspotId}
                 initialYaw={activeScene.initialYaw}
                 initialPitch={activeScene.initialPitch}
+                initialZoom={activeScene.initialZoom}
                 onHotspotClick={(h) => useEditorStore.getState().selectHotspot(h.id)}
                 onSphereClick={handleSphereClick}
                 onHotspotMove={handleHotspotMove}

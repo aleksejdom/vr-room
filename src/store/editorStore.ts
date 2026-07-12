@@ -24,7 +24,7 @@ interface EditorState {
   deleteHotspot: (sceneId: string, hotspotId: string) => void;
   updateScene: (sceneId: string, updates: Partial<Scene>) => void;
   setSceneName: (sceneId: string, name: string) => void;
-  setSceneViewport: (sceneId: string, yaw: number, pitch: number) => void;
+  setSceneViewport: (sceneId: string, yaw: number, pitch: number, zoom: number) => void;
   reorderScenes: (sceneIds: string[]) => void;
   setScenePanorama: (
     sceneId: string,
@@ -136,12 +136,13 @@ export const useEditorStore = create<EditorState>()(
       }),
 
     // Updates viewport without marking isDirty — it's persisted separately
-    setSceneViewport: (sceneId, yaw, pitch) =>
+    setSceneViewport: (sceneId, yaw, pitch, zoom) =>
       set((state) => {
         const scene = state.tour?.scenes.find((s) => s.id === sceneId);
         if (scene) {
           scene.initialYaw = yaw;
           scene.initialPitch = pitch;
+          scene.initialZoom = zoom;
         }
       }),
 

@@ -8,7 +8,7 @@ const RAD_TO_DEG = 180 / Math.PI;
 const DEG_TO_RAD = Math.PI / 180;
 
 export interface PanoramaViewerRef {
-  getPosition: () => { yaw: number; pitch: number } | null;
+  getPosition: () => { yaw: number; pitch: number; zoom: number } | null;
   animateTo: (yaw: number, pitch: number) => Promise<void>;
 }
 
@@ -18,6 +18,7 @@ interface PanoramaViewerProps {
   selectedHotspotId?: string | null;
   initialYaw?: number;
   initialPitch?: number;
+  initialZoom?: number;
   onHotspotClick?: (hotspot: Hotspot) => void;
   onSphereClick?: (pitch: number, yaw: number) => void;
   onHotspotMove?: (id: string, pitch: number, yaw: number) => void;
@@ -33,6 +34,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
       selectedHotspotId = null,
       initialYaw = 0,
       initialPitch = 0,
+      initialZoom = 50,
       onHotspotClick,
       onSphereClick,
       onHotspotMove,
@@ -57,6 +59,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
     const selectedHotspotIdRef = useRef(selectedHotspotId);
     const initialYawRef        = useRef(initialYaw);
     const initialPitchRef      = useRef(initialPitch);
+    const initialZoomRef       = useRef(initialZoom);
     const onHotspotClickRef    = useRef(onHotspotClick);
     const onSphereClickRef     = useRef(onSphereClick);
     const onHotspotMoveRef     = useRef(onHotspotMove);
@@ -67,6 +70,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
     useEffect(() => { selectedHotspotIdRef.current= selectedHotspotId;}, [selectedHotspotId]);
     useEffect(() => { initialYawRef.current       = initialYaw;       }, [initialYaw]);
     useEffect(() => { initialPitchRef.current     = initialPitch;     }, [initialPitch]);
+    useEffect(() => { initialZoomRef.current      = initialZoom;      }, [initialZoom]);
     useEffect(() => { onHotspotClickRef.current   = onHotspotClick;   }, [onHotspotClick]);
     useEffect(() => { onSphereClickRef.current    = onSphereClick;    }, [onSphereClick]);
     useEffect(() => { onHotspotMoveRef.current    = onHotspotMove;    }, [onHotspotMove]);
@@ -108,7 +112,11 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
         const v = viewerRef.current;
         if (!v) return null;
         const pos = v.getPosition();
-        return { yaw: pos.yaw * RAD_TO_DEG, pitch: pos.pitch * RAD_TO_DEG };
+        return {
+          yaw:   pos.yaw   * RAD_TO_DEG,
+          pitch: pos.pitch * RAD_TO_DEG,
+          zoom:  v.getZoomLevel(),
+        };
       },
       animateTo: (yaw, pitch) => {
         const v = viewerRef.current;
@@ -148,7 +156,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           panorama:        imageUrlRef.current,
           defaultYaw:      `${initialYawRef.current}deg`,
           defaultPitch:    `${initialPitchRef.current}deg`,
-          defaultZoomLvl:  50,
+          defaultZoomLvl:  initialZoomRef.current,
           navbar:          false,
           touchmoveTwoFingers: false,
           mousewheelCtrlKey:   false,
@@ -289,7 +297,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           yaw:   initialYawRef.current   * DEG_TO_RAD,
           pitch: initialPitchRef.current * DEG_TO_RAD,
         },
-        zoom: 50,
+        zoom: initialZoomRef.current,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any) as Promise<void>)
         .then(() => {

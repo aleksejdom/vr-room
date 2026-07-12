@@ -232,7 +232,8 @@ export async function confirmPanoramaUpload(
 export async function updateSceneViewport(
   sceneId: string,
   yaw: number,
-  pitch: number
+  pitch: number,
+  zoom: number
 ) {
   const userId = await requireAuth();
 
@@ -247,7 +248,7 @@ export async function updateSceneViewport(
 
   await db
     .update(scenes)
-    .set({ initialYaw: yaw, initialPitch: pitch })
+    .set({ initialYaw: yaw, initialPitch: pitch, initialZoom: zoom })
     .where(eq(scenes.id, sceneId));
 
   // Bewusst KEIN revalidatePath auf den Editor: der Router-Refresh würde
