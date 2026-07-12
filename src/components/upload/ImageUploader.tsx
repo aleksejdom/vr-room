@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Progress } from "@/components/ui/progress";
-import { cn, formatFileSize } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Upload, CheckCircle, AlertCircle, Image } from "lucide-react";
 
 interface UploadResult {
@@ -35,16 +35,19 @@ export function ImageUploader({ sceneId, onUploadComplete, className }: ImageUpl
       setErrorMessage("");
 
       try {
-        const { key, url } = await uploadWithProgress(file, sceneId, setProgress);
-
-        const dims = await getImageDimensions(file);
+        // Maße/Größe kommen vom Server — der komprimiert Panoramen beim Upload
+        const { key, url, width, height, fileSize } = await uploadWithProgress(
+          file,
+          sceneId,
+          setProgress
+        );
 
         const result: UploadResult = {
           url,
           key,
-          width: dims.width,
-          height: dims.height,
-          fileSize: file.size,
+          width: width ?? 0,
+          height: height ?? 0,
+          fileSize: fileSize ?? file.size,
           thumbnailUrl: url,
         };
 
@@ -132,7 +135,13 @@ function uploadWithProgress(
   file: File,
   sceneId: string,
   onProgress: (p: number) => void
-): Promise<{ key: string; url: string }> {
+): Promise<{
+  key: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+  fileSize: number | null;
+}> {
   return new Promise((resolve, reject) => {
     const body = new FormData();
     body.append("file", file);
@@ -153,14 +162,5 @@ function uploadWithProgress(
     xhr.addEventListener("error", () => reject(new Error("Netzwerkfehler")));
     xhr.open("POST", "/api/upload");
     xhr.send(body);
-  });
-}
-
-function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve) => {
-    const img = new window.Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => resolve({ width: 0, height: 0 });
-    img.src = URL.createObjectURL(file);
   });
 }
