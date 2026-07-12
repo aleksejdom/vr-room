@@ -263,9 +263,9 @@ export async function updateSceneViewport(
 
 /**
  * Richtet eine Szene automatisch am Horizont aus: lädt das Panorama aus dem
- * Storage, erkennt die Horizontlinie im Bild und speichert daraus die
- * Begradigungswinkel (horizonTilt/-Roll) sowie die auf den Horizont
- * zentrierte Startansicht (initialPitch).
+ * Storage, erkennt die dominante horizontale Linie im Bild und speichert
+ * daraus die Begradigungswinkel (horizonTilt/-Roll); die Startansicht wird
+ * auf den Horizont nivelliert (initialPitch = 0).
  */
 export async function alignSceneHorizon(sceneId: string) {
   const userId = await requireAuth();
@@ -314,9 +314,12 @@ export async function alignSceneHorizon(sceneId: string) {
   }
 
   const round = (v: number) => Math.round(v * 100) / 100;
-  const pitch = round(detection.pitchDeg);
   const tilt = round(detection.tiltDeg);
   const roll = round(detection.rollDeg);
+  // Nach der Begradigung liegt der Horizont per Definition auf Pitch 0 —
+  // die Startansicht wird also nivelliert, nicht auf die erkannte Linie
+  // (z. B. eine Bodenkante) zentriert.
+  const pitch = 0;
 
   await db
     .update(scenes)
