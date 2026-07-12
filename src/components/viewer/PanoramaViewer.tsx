@@ -19,9 +19,11 @@ interface PanoramaViewerProps {
   initialYaw?: number;
   initialPitch?: number;
   initialZoom?: number;
-  /** Begradigung aus der Auto-Horizont-Ausrichtung (Grad, sphereCorrection) */
+  /** Begradigung aus der Horizont-Ausrichtung (Grad, sphereCorrection) */
   horizonTilt?: number;
   horizonRoll?: number;
+  /** Wasserwaagen-Gitter einblenden (Level-Korrektur-Panel im Editor) */
+  showLevelGrid?: boolean;
   onHotspotClick?: (hotspot: Hotspot) => void;
   onSphereClick?: (pitch: number, yaw: number) => void;
   onHotspotMove?: (id: string, pitch: number, yaw: number) => void;
@@ -40,6 +42,7 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
       initialZoom = 50,
       horizonTilt = 0,
       horizonRoll = 0,
+      showLevelGrid = false,
       onHotspotClick,
       onSphereClick,
       onHotspotMove,
@@ -327,11 +330,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
         });
     }, [imageUrl, rebuildMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Auto-Horizont-Ausrichtung live anwenden ────────────────────────────
-    // Greift, wenn die aktive Szene ausgerichtet wird: Panorama begradigen
-    // und die Kamera sanft auf den erkannten Horizont schwenken. Bei
-    // Szenenwechseln ist transitioningRef gesetzt (Effekt oben läuft zuerst)
-    // und setPanorama übernimmt die Korrektur selbst.
+    // ── Horizont-Korrektur live anwenden ───────────────────────────────────
+    // Greift bei Auto-Ausrichtung und beim Ziehen des Level-Reglers der
+    // aktiven Szene. Bei Szenenwechseln ist transitioningRef gesetzt (Effekt
+    // oben läuft zuerst) und setPanorama übernimmt die Korrektur selbst.
     useEffect(() => {
       const v = viewerRef.current;
       if (!v || transitioningRef.current) return;
@@ -340,14 +342,85 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           tilt: horizonTilt * DEG_TO_RAD,
           roll: horizonRoll * DEG_TO_RAD,
         });
-        const yaw = v.getPosition().yaw;
-        v.animate({
-          yaw,
-          pitch: initialPitch * DEG_TO_RAD,
-          speed: "6rpm",
-        });
       } catch { /* viewer not ready */ }
-    }, [horizonTilt, horizonRoll, initialPitch]);
+    }, [horizonTilt, horizonRoll]);
+
+    // ── Wasserwaagen-Gitter (Level-Korrektur-Panel) ────────────────────────
+    // Weltfestes Lat/Long-Gitter als Nivellier-Referenz: es bleibt gerade,
+    // während das Panorama darunter per sphereCorrection gedreht wird.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const levelGridRef = useRef<any>(null);
+    useEffect(() => {
+      let cancelled = false;
+      const v = viewerRef.current;
+      if (showLevelGrid) {
+        if (!v || levelGridRef.current) return;
+        (async () => {
+          const THREE = await import("three");
+          const viewer = viewerRef.current;
+          if (cancelled || !viewer || levelGridRef.current) return;
+
+          const group = new THREE.Group();
+          const mat = new THREE.LineBasicMaterial({
+            color: 0x22d3ee, transparent: true, opacity: 0.3, depthTest: false,
+          });
+          const equatorMat = new THREE.LineBasicMaterial({
+            color: 0x22d3ee, transparent: true, opacity: 0.9, depthTest: false,
+          });
+          const R = 8;
+          const SEG = 72;
+
+          // Breitengrade (Äquator hervorgehoben = Ziel-Horizont)
+          for (let lat = -75; lat <= 75; lat += 15) {
+            const phi = lat * DEG_TO_RAD;
+            const pts = [];
+            for (let i = 0; i <= SEG; i++) {
+              const t = (i / SEG) * Math.PI * 2;
+              pts.push(new THREE.Vector3(
+                R * Math.cos(phi) * Math.cos(t),
+                R * Math.sin(phi),
+                R * Math.cos(phi) * Math.sin(t)
+              ));
+            }
+            const line = new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints(pts),
+              lat === 0 ? equatorMat : mat
+            );
+            line.renderOrder = 10;
+            group.add(line);
+          }
+          // Längengrade (senkrechte Referenzlinien)
+          for (let lon = 0; lon < 360; lon += 15) {
+            const th = lon * DEG_TO_RAD;
+            const pts = [];
+            for (let i = 0; i <= SEG / 2; i++) {
+              const p = -Math.PI / 2 + (i / (SEG / 2)) * Math.PI;
+              pts.push(new THREE.Vector3(
+                R * Math.cos(p) * Math.cos(th),
+                R * Math.sin(p),
+                R * Math.cos(p) * Math.sin(th)
+              ));
+            }
+            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+            line.renderOrder = 10;
+            group.add(line);
+          }
+
+          levelGridRef.current = group;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (viewer as any).renderer.addObject(group);
+          viewer.needsUpdate();
+        })();
+      } else if (levelGridRef.current && v) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (v as any).renderer.removeObject(levelGridRef.current);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        levelGridRef.current.traverse((obj: any) => obj.geometry?.dispose?.());
+        levelGridRef.current = null;
+        v.needsUpdate();
+      }
+      return () => { cancelled = true; };
+    }, [showLevelGrid]);
 
     // ── Rebuild markers when hotspots / selection changes (not during transition) ──
     useEffect(() => {

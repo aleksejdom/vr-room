@@ -12,6 +12,7 @@ interface EditorState {
   newHotspotType: HotspotType;
   isDirty: boolean;
   isSaving: boolean;
+  isLevelPanelOpen: boolean;
 
   setTour: (tour: Tour) => void;
   setActiveScene: (sceneId: string) => void;
@@ -26,6 +27,8 @@ interface EditorState {
   setSceneName: (sceneId: string, name: string) => void;
   setSceneViewport: (sceneId: string, yaw: number, pitch: number, zoom: number) => void;
   setSceneAlignment: (sceneId: string, pitch: number, tilt: number, roll: number) => void;
+  setSceneLevel: (sceneId: string, tilt: number, roll: number) => void;
+  setLevelPanelOpen: (open: boolean) => void;
   reorderScenes: (sceneIds: string[]) => void;
   setScenePanorama: (
     sceneId: string,
@@ -44,6 +47,7 @@ export const useEditorStore = create<EditorState>()(
     newHotspotType: "scene_link",
     isDirty: false,
     isSaving: false,
+    isLevelPanelOpen: false,
 
     setTour: (tour) =>
       set((state) => {
@@ -156,6 +160,22 @@ export const useEditorStore = create<EditorState>()(
           scene.horizonTilt = tilt;
           scene.horizonRoll = roll;
         }
+      }),
+
+    // Manuelle Level-Korrektur (Live-Vorschau): kein isDirty, Persistieren
+    // übernimmt der Speichern-Button im Panel
+    setSceneLevel: (sceneId, tilt, roll) =>
+      set((state) => {
+        const scene = state.tour?.scenes.find((s) => s.id === sceneId);
+        if (scene) {
+          scene.horizonTilt = tilt;
+          scene.horizonRoll = roll;
+        }
+      }),
+
+    setLevelPanelOpen: (open) =>
+      set((state) => {
+        state.isLevelPanelOpen = open;
       }),
 
     // Ordnet Szenen neu, ohne isDirty zu setzen — die Reihenfolge wird

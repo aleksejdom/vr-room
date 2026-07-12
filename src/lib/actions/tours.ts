@@ -331,6 +331,36 @@ export async function alignSceneHorizon(sceneId: string) {
   return { success: true, pitch, tilt, roll, confidence: detection.confidence };
 }
 
+/** Persistiert die manuelle Level-Korrektur (Kuula-Stil) einer Szene. */
+export async function updateSceneLevel(sceneId: string, tilt: number, roll: number) {
+  const userId = await requireAuth();
+
+  const scene = await db.query.scenes.findFirst({
+    where: eq(scenes.id, sceneId),
+    with: { tour: { with: { project: { columns: { ownerId: true } } } } },
+  });
+
+  if (!scene || scene.tour.project.ownerId !== userId) {
+    return { error: "Nicht gefunden." };
+  }
+  if (
+    !Number.isFinite(tilt) ||
+    !Number.isFinite(roll) ||
+    Math.abs(tilt) > 45 ||
+    Math.abs(roll) > 45
+  ) {
+    return { error: "Ungültige Korrekturwerte." };
+  }
+
+  await db
+    .update(scenes)
+    .set({ horizonTilt: tilt, horizonRoll: roll })
+    .where(eq(scenes.id, sceneId));
+
+  // Wie bei updateSceneViewport bewusst KEIN revalidatePath
+  return { success: true };
+}
+
 export async function saveHotspots(sceneId: string, updatedHotspots: Hotspot[]) {
   const userId = await requireAuth();
 

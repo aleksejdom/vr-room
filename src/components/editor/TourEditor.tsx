@@ -8,11 +8,12 @@ import { HotspotPanel } from "@/components/editor/HotspotPanel";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { ImageUploader } from "@/components/upload/ImageUploader";
 import { EmbedPanel } from "@/components/editor/EmbedPanel";
+import { LevelCorrectionPanel } from "@/components/editor/LevelCorrectionPanel";
 import { confirmPanoramaUpload, updateSceneViewport } from "@/lib/actions/tours";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tour, HotspotType } from "@/types/tour";
 import { toast } from "sonner";
-import { Image, Crosshair, Code, Bookmark } from "lucide-react";
+import { Image, Crosshair, Code, Bookmark, Ruler } from "lucide-react";
 const RAD_TO_DEG = 180 / Math.PI;
 
 const DEFAULT_ICON_BY_TYPE: Record<HotspotType, string> = {
@@ -53,6 +54,8 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
     setScenePanorama,
     selectedHotspotId,
     setSceneViewport,
+    isLevelPanelOpen,
+    setLevelPanelOpen,
   } = useEditorStore();
   const activeScene = useActiveScene();
   const viewerRef = useRef<PanoramaViewerRef>(null);
@@ -170,20 +173,41 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
                 initialZoom={activeScene.initialZoom}
                 horizonTilt={activeScene.horizonTilt}
                 horizonRoll={activeScene.horizonRoll}
+                showLevelGrid={isLevelPanelOpen}
                 onHotspotClick={(h) => useEditorStore.getState().selectHotspot(h.id)}
                 onSphereClick={handleSphereClick}
                 onHotspotMove={handleHotspotMove}
                 isEditorMode
                 isPlacingHotspot={isPlacingHotspot}
               />
-              <button
-                onClick={handleSaveView}
-                className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white text-xs px-2.5 py-1.5 rounded-lg transition-colors backdrop-blur-sm"
-                title={`Aktuelle Kameraposition als Startansicht für "${activeScene.name}" speichern`}
-              >
-                <Bookmark className="h-3 w-3" />
-                Ansicht speichern · <span className="opacity-70 max-w-[80px] truncate">{activeScene.name}</span>
-              </button>
+              <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+                <button
+                  onClick={() => setLevelPanelOpen(!isLevelPanelOpen)}
+                  className={`flex items-center gap-1.5 text-white text-xs px-2.5 py-1.5 rounded-lg transition-colors backdrop-blur-sm ${
+                    isLevelPanelOpen ? "bg-cyan-500/80 hover:bg-cyan-500" : "bg-black/60 hover:bg-black/80"
+                  }`}
+                  title="Horizont-Korrektur (Level) öffnen"
+                >
+                  <Ruler className="h-3 w-3" />
+                  Horizont
+                </button>
+                <button
+                  onClick={handleSaveView}
+                  className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white text-xs px-2.5 py-1.5 rounded-lg transition-colors backdrop-blur-sm"
+                  title={`Aktuelle Kameraposition als Startansicht für "${activeScene.name}" speichern`}
+                >
+                  <Bookmark className="h-3 w-3" />
+                  Ansicht speichern · <span className="opacity-70 max-w-[80px] truncate">{activeScene.name}</span>
+                </button>
+              </div>
+              {isLevelPanelOpen && (
+                <LevelCorrectionPanel
+                  key={activeScene.id}
+                  scene={activeScene}
+                  getYawDeg={() => viewerRef.current?.getPosition()?.yaw ?? null}
+                  onClose={() => setLevelPanelOpen(false)}
+                />
+              )}
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center p-8">

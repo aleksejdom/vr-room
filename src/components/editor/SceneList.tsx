@@ -8,7 +8,6 @@ import {
   deleteScene,
   updateSceneOrder,
   updateSceneName,
-  alignSceneHorizon,
 } from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +20,7 @@ import {
   Star,
   GripVertical,
   Pencil,
-  Wand2,
-  Loader2,
+  Ruler,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -36,12 +34,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function SceneList() {
-  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName, setSceneAlignment } =
+  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName, setLevelPanelOpen } =
     useEditorStore();
   const [newSceneName, setNewSceneName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [aligningId, setAligningId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -94,26 +91,6 @@ export function SceneList() {
       toast.error(result.error);
     } else {
       toast.success("Reihenfolge gespeichert");
-    }
-  };
-
-  const handleAlignHorizon = async (sceneId: string, sceneName: string) => {
-    if (aligningId) return;
-    setAligningId(sceneId);
-    try {
-      const result = await alignSceneHorizon(sceneId);
-      if (result?.error || !result?.success) {
-        toast.error(result?.error ?? "Ausrichtung fehlgeschlagen.");
-        return;
-      }
-      setSceneAlignment(sceneId, result.pitch, result.tilt, result.roll);
-      toast.success(
-        `„${sceneName}" am Horizont ausgerichtet (Neigung ${result.tilt.toFixed(1)}°, Rollung ${result.roll.toFixed(1)}°)`
-      );
-    } catch {
-      toast.error("Ausrichtung fehlgeschlagen — Verbindung prüfen.");
-    } finally {
-      setAligningId(null);
     }
   };
 
@@ -246,12 +223,7 @@ export function SceneList() {
                   {scene.hotspots.length} Hotspot{scene.hotspots.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <div
-                className={cn(
-                  "flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-                  aligningId === scene.id && "opacity-100"
-                )}
-              >
+              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -266,17 +238,13 @@ export function SceneList() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleAlignHorizon(scene.id, scene.name);
+                      setActiveScene(scene.id);
+                      setLevelPanelOpen(true);
                     }}
-                    disabled={aligningId !== null}
-                    className="p-1 hover:text-primary disabled:opacity-50"
-                    title="Automatisch am Horizont ausrichten"
+                    className="p-1 hover:text-primary"
+                    title="Horizont-Korrektur öffnen"
                   >
-                    {aligningId === scene.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-3 w-3" />
-                    )}
+                    <Ruler className="h-3 w-3" />
                   </button>
                 )}
                 <button
