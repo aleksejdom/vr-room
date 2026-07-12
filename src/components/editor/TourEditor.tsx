@@ -81,15 +81,23 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
   };
 
   const handleSaveView = async () => {
+    if (!activeScene) return;
     const pos = viewerRef.current?.getPosition();
-    if (!pos || !activeScene) return;
-    const result = await updateSceneViewport(activeScene.id, pos.yaw, pos.pitch);
-    if (result?.error) {
-      toast.error(result.error);
-    } else {
+    if (!pos) {
+      toast.error("Viewer lädt noch — bitte kurz warten");
+      return;
+    }
+    try {
+      const result = await updateSceneViewport(activeScene.id, pos.yaw, pos.pitch);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
       // Update store so switching scenes in this session uses the new viewport
       setSceneViewport(activeScene.id, pos.yaw, pos.pitch);
       toast.success(`Startansicht für "${activeScene.name}" gespeichert`);
+    } catch {
+      toast.error("Speichern fehlgeschlagen — Verbindung prüfen");
     }
   };
 

@@ -7,6 +7,9 @@ import { headers } from "next/headers";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
 import type { Hotspot } from "@/types/tour";
 
+// Immer frisch rendern — siehe tour/[slug]/page.tsx
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

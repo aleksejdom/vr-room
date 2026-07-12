@@ -7,6 +7,11 @@ import type { Metadata } from "next";
 import { PublicTourViewer } from "@/components/viewer/PublicTourViewer";
 import type { Hotspot } from "@/types/tour";
 
+// Immer frisch rendern: DB-Queries sind für den Router unsichtbar, sonst
+// würde die Seite in Produktion gecacht und gespeicherte Startansichten,
+// Hotspots etc. erst nach einem Redeploy sichtbar.
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

@@ -250,7 +250,10 @@ export async function updateSceneViewport(
     .set({ initialYaw: yaw, initialPitch: pitch })
     .where(eq(scenes.id, sceneId));
 
-  revalidatePath(`/tours/${scene.tourId}`);
+  // Bewusst KEIN revalidatePath auf den Editor: der Router-Refresh würde
+  // setTour(initialTour) auslösen und ungespeicherte Hotspot-Änderungen
+  // verwerfen. Der Editor-Store wird clientseitig aktualisiert; die
+  // öffentliche Tour-Seite rendert dynamisch (force-dynamic).
   return { success: true };
 }
 
