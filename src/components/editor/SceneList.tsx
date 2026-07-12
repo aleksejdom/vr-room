@@ -255,7 +255,7 @@ export function SceneList() {
               }}
             />
             <Button size="sm" className="h-7 px-2 text-xs" onClick={handleAddScene}>
-              OK
+              Szene hinzufügen
             </Button>
           </div>
         ) : (
