@@ -25,6 +25,7 @@ interface EditorState {
   updateScene: (sceneId: string, updates: Partial<Scene>) => void;
   setSceneName: (sceneId: string, name: string) => void;
   setSceneViewport: (sceneId: string, yaw: number, pitch: number, zoom: number) => void;
+  setSceneAlignment: (sceneId: string, pitch: number, tilt: number, roll: number) => void;
   reorderScenes: (sceneIds: string[]) => void;
   setScenePanorama: (
     sceneId: string,
@@ -143,6 +144,17 @@ export const useEditorStore = create<EditorState>()(
           scene.initialYaw = yaw;
           scene.initialPitch = pitch;
           scene.initialZoom = zoom;
+        }
+      }),
+
+    // Auto-Horizont-Ausrichtung: sofort persistiert, daher kein isDirty
+    setSceneAlignment: (sceneId, pitch, tilt, roll) =>
+      set((state) => {
+        const scene = state.tour?.scenes.find((s) => s.id === sceneId);
+        if (scene) {
+          scene.initialPitch = pitch;
+          scene.horizonTilt = tilt;
+          scene.horizonRoll = roll;
         }
       }),
 

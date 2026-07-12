@@ -80,6 +80,8 @@ function serializeTour(tour: TourWithScenes) {
       initialYaw: s.initialYaw ?? 0,
       initialPitch: s.initialPitch ?? 0,
       initialZoom: s.initialZoom ?? 50,
+      horizonTilt: s.horizonTilt ?? 0,
+      horizonRoll: s.horizonRoll ?? 0,
       panoramaImage: s.panoramaImage
         ? {
             url: `/api/media/${s.panoramaImage.storageKey}`,

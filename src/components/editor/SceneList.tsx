@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useEditorStore } from "@/store/editorStore";
-import { createScene, deleteScene, updateSceneOrder, updateSceneName } from "@/lib/actions/tours";
+import {
+  createScene,
+  deleteScene,
+  updateSceneOrder,
+  updateSceneName,
+  alignSceneHorizon,
+} from "@/lib/actions/tours";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -15,6 +21,8 @@ import {
   Star,
   GripVertical,
   Pencil,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -28,10 +36,12 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function SceneList() {
-  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName } = useEditorStore();
+  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName, setSceneAlignment } =
+    useEditorStore();
   const [newSceneName, setNewSceneName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [aligningId, setAligningId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -87,6 +97,26 @@ export function SceneList() {
     }
   };
 
+  const handleAlignHorizon = async (sceneId: string, sceneName: string) => {
+    if (aligningId) return;
+    setAligningId(sceneId);
+    try {
+      const result = await alignSceneHorizon(sceneId);
+      if (result?.error || !result?.success) {
+        toast.error(result?.error ?? "Ausrichtung fehlgeschlagen.");
+        return;
+      }
+      setSceneAlignment(sceneId, result.pitch, result.tilt, result.roll);
+      toast.success(
+        `„${sceneName}" am Horizont ausgerichtet (Neigung ${result.tilt.toFixed(1)}°, Rollung ${result.roll.toFixed(1)}°)`
+      );
+    } catch {
+      toast.error("Ausrichtung fehlgeschlagen — Verbindung prüfen.");
+    } finally {
+      setAligningId(null);
+    }
+  };
+
   const handleAddScene = async () => {
     const name = newSceneName.trim() || `Szene ${tour.scenes.length + 1}`;
     const result = await createScene(tour.id, name);
@@ -98,6 +128,8 @@ export function SceneList() {
         initialYaw: result.scene.initialYaw ?? 0,
         initialPitch: result.scene.initialPitch ?? 0,
         initialZoom: result.scene.initialZoom ?? 50,
+        horizonTilt: result.scene.horizonTilt ?? 0,
+        horizonRoll: result.scene.horizonRoll ?? 0,
         ambientAudio: result.scene.ambientAudio ?? null,
       });
       setActiveScene(result.scene.id);
@@ -214,7 +246,12 @@ export function SceneList() {
                   {scene.hotspots.length} Hotspot{scene.hotspots.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                className={cn(
+                  "flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+                  aligningId === scene.id && "opacity-100"
+                )}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -225,6 +262,23 @@ export function SceneList() {
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
+                {scene.panoramaImage && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAlignHorizon(scene.id, scene.name);
+                    }}
+                    disabled={aligningId !== null}
+                    className="p-1 hover:text-primary disabled:opacity-50"
+                    title="Automatisch am Horizont ausrichten"
+                  >
+                    {aligningId === scene.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-3 w-3" />
+                    )}
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

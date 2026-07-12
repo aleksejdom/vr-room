@@ -16,6 +16,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { generateSlug } from "@/lib/utils";
 import { nanoid } from "nanoid";
+import { r2 } from "@/lib/r2";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { detectHorizon } from "@/lib/horizon";
 import type { Hotspot } from "@/types/tour";
 
 async function requireAuth() {
@@ -256,6 +259,73 @@ export async function updateSceneViewport(
   // verwerfen. Der Editor-Store wird clientseitig aktualisiert; die
   // öffentliche Tour-Seite rendert dynamisch (force-dynamic).
   return { success: true };
+}
+
+/**
+ * Richtet eine Szene automatisch am Horizont aus: lädt das Panorama aus dem
+ * Storage, erkennt die Horizontlinie im Bild und speichert daraus die
+ * Begradigungswinkel (horizonTilt/-Roll) sowie die auf den Horizont
+ * zentrierte Startansicht (initialPitch).
+ */
+export async function alignSceneHorizon(sceneId: string) {
+  const userId = await requireAuth();
+
+  const scene = await db.query.scenes.findFirst({
+    where: eq(scenes.id, sceneId),
+    with: {
+      tour: { with: { project: { columns: { ownerId: true } } } },
+      panoramaImage: true,
+    },
+  });
+
+  if (!scene || scene.tour.project.ownerId !== userId) {
+    return { error: "Nicht gefunden." };
+  }
+  if (!scene.panoramaImage) {
+    return { error: "Diese Szene hat noch kein Panorama." };
+  }
+
+  let buffer: Buffer;
+  try {
+    const object = await r2.send(
+      new GetObjectCommand({
+        Bucket: process.env.MINIO_BUCKET_NAME!,
+        Key: scene.panoramaImage.storageKey,
+      })
+    );
+    buffer = Buffer.from(await object.Body!.transformToByteArray());
+  } catch (err) {
+    console.error("[alignSceneHorizon] storage error:", err);
+    return { error: "Panorama konnte nicht geladen werden." };
+  }
+
+  let detection;
+  try {
+    detection = await detectHorizon(buffer);
+  } catch (err) {
+    console.error("[alignSceneHorizon] detection error:", err);
+    return { error: "Bild konnte nicht analysiert werden." };
+  }
+  if (!detection) {
+    return {
+      error:
+        "Horizont konnte nicht zuverlässig erkannt werden. Die Ansicht kann weiterhin manuell über „Ansicht speichern“ gesetzt werden.",
+    };
+  }
+
+  const round = (v: number) => Math.round(v * 100) / 100;
+  const pitch = round(detection.pitchDeg);
+  const tilt = round(detection.tiltDeg);
+  const roll = round(detection.rollDeg);
+
+  await db
+    .update(scenes)
+    .set({ initialPitch: pitch, horizonTilt: tilt, horizonRoll: roll })
+    .where(eq(scenes.id, sceneId));
+
+  // Wie bei updateSceneViewport bewusst KEIN revalidatePath: der Editor-Store
+  // wird clientseitig aktualisiert, die öffentlichen Seiten rendern dynamisch.
+  return { success: true, pitch, tilt, roll, confidence: detection.confidence };
 }
 
 export async function saveHotspots(sceneId: string, updatedHotspots: Hotspot[]) {

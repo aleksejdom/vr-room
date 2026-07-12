@@ -168,6 +168,8 @@ export function TourEditor({ initialTour }: { initialTour: Tour }) {
                 initialYaw={activeScene.initialYaw}
                 initialPitch={activeScene.initialPitch}
                 initialZoom={activeScene.initialZoom}
+                horizonTilt={activeScene.horizonTilt}
+                horizonRoll={activeScene.horizonRoll}
                 onHotspotClick={(h) => useEditorStore.getState().selectHotspot(h.id)}
                 onSphereClick={handleSphereClick}
                 onHotspotMove={handleHotspotMove}

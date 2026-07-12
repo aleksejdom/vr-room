@@ -95,6 +95,9 @@ export const scenes = pgTable("scenes", {
   initialYaw: real("initial_yaw").default(0),
   initialPitch: real("initial_pitch").default(0),
   initialZoom: real("initial_zoom").default(50),
+  // Automatische Horizont-Ausrichtung: sphereCorrection-Winkel in Grad
+  horizonTilt: real("horizon_tilt").default(0),
+  horizonRoll: real("horizon_roll").default(0),
   ambientAudio: text("ambient_audio_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

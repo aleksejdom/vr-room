@@ -19,6 +19,9 @@ interface PanoramaViewerProps {
   initialYaw?: number;
   initialPitch?: number;
   initialZoom?: number;
+  /** Begradigung aus der Auto-Horizont-Ausrichtung (Grad, sphereCorrection) */
+  horizonTilt?: number;
+  horizonRoll?: number;
   onHotspotClick?: (hotspot: Hotspot) => void;
   onSphereClick?: (pitch: number, yaw: number) => void;
   onHotspotMove?: (id: string, pitch: number, yaw: number) => void;
@@ -35,6 +38,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
       initialYaw = 0,
       initialPitch = 0,
       initialZoom = 50,
+      horizonTilt = 0,
+      horizonRoll = 0,
       onHotspotClick,
       onSphereClick,
       onHotspotMove,
@@ -60,6 +65,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
     const initialYawRef        = useRef(initialYaw);
     const initialPitchRef      = useRef(initialPitch);
     const initialZoomRef       = useRef(initialZoom);
+    const horizonTiltRef       = useRef(horizonTilt);
+    const horizonRollRef       = useRef(horizonRoll);
     const onHotspotClickRef    = useRef(onHotspotClick);
     const onSphereClickRef     = useRef(onSphereClick);
     const onHotspotMoveRef     = useRef(onHotspotMove);
@@ -71,6 +78,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
     useEffect(() => { initialYawRef.current       = initialYaw;       }, [initialYaw]);
     useEffect(() => { initialPitchRef.current     = initialPitch;     }, [initialPitch]);
     useEffect(() => { initialZoomRef.current      = initialZoom;      }, [initialZoom]);
+    useEffect(() => { horizonTiltRef.current      = horizonTilt;      }, [horizonTilt]);
+    useEffect(() => { horizonRollRef.current      = horizonRoll;      }, [horizonRoll]);
     useEffect(() => { onHotspotClickRef.current   = onHotspotClick;   }, [onHotspotClick]);
     useEffect(() => { onSphereClickRef.current    = onSphereClick;    }, [onSphereClick]);
     useEffect(() => { onHotspotMoveRef.current    = onHotspotMove;    }, [onHotspotMove]);
@@ -157,6 +166,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           defaultYaw:      `${initialYawRef.current}deg`,
           defaultPitch:    `${initialPitchRef.current}deg`,
           defaultZoomLvl:  initialZoomRef.current,
+          sphereCorrection: {
+            tilt: horizonTiltRef.current * DEG_TO_RAD,
+            roll: horizonRollRef.current * DEG_TO_RAD,
+          },
           navbar:          false,
           touchmoveTwoFingers: false,
           mousewheelCtrlKey:   false,
@@ -298,6 +311,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           pitch: initialPitchRef.current * DEG_TO_RAD,
         },
         zoom: initialZoomRef.current,
+        sphereCorrection: {
+          tilt: horizonTiltRef.current * DEG_TO_RAD,
+          roll: horizonRollRef.current * DEG_TO_RAD,
+        },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any) as Promise<void>)
         .then(() => {
@@ -309,6 +326,28 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           transitioningRef.current = false;
         });
     }, [imageUrl, rebuildMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Auto-Horizont-Ausrichtung live anwenden ────────────────────────────
+    // Greift, wenn die aktive Szene ausgerichtet wird: Panorama begradigen
+    // und die Kamera sanft auf den erkannten Horizont schwenken. Bei
+    // Szenenwechseln ist transitioningRef gesetzt (Effekt oben läuft zuerst)
+    // und setPanorama übernimmt die Korrektur selbst.
+    useEffect(() => {
+      const v = viewerRef.current;
+      if (!v || transitioningRef.current) return;
+      try {
+        v.setOption("sphereCorrection", {
+          tilt: horizonTilt * DEG_TO_RAD,
+          roll: horizonRoll * DEG_TO_RAD,
+        });
+        const yaw = v.getPosition().yaw;
+        v.animate({
+          yaw,
+          pitch: initialPitch * DEG_TO_RAD,
+          speed: "6rpm",
+        });
+      } catch { /* viewer not ready */ }
+    }, [horizonTilt, horizonRoll, initialPitch]);
 
     // ── Rebuild markers when hotspots / selection changes (not during transition) ──
     useEffect(() => {

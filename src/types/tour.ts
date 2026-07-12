@@ -91,6 +91,9 @@ export interface Scene {
   initialYaw: number;
   initialPitch: number;
   initialZoom: number;
+  /** Begradigungswinkel der Auto-Horizont-Ausrichtung (Grad, sphereCorrection) */
+  horizonTilt: number;
+  horizonRoll: number;
   ambientAudio: string | null;
   panoramaImage: PanoramaImage | null;
   hotspots: Hotspot[];
