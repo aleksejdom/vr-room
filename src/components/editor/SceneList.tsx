@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function SceneList() {
-  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName, setLevelPanelOpen } =
+  const { tour, setActiveScene, activeSceneId, reorderScenes, setSceneName, setLevelPanelOpen, addScene } =
     useEditorStore();
   const [newSceneName, setNewSceneName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -98,7 +98,7 @@ export function SceneList() {
     const name = newSceneName.trim() || `Szene ${tour.scenes.length + 1}`;
     const result = await createScene(tour.id, name);
     if (result?.scene) {
-      tour.scenes.push({
+      addScene({
         ...result.scene,
         panoramaImage: null,
         hotspots: [],
@@ -109,7 +109,6 @@ export function SceneList() {
         horizonRoll: result.scene.horizonRoll ?? 0,
         ambientAudio: result.scene.ambientAudio ?? null,
       });
-      setActiveScene(result.scene.id);
     }
     setNewSceneName("");
     setIsAdding(false);

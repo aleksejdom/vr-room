@@ -16,6 +16,7 @@ interface EditorState {
 
   setTour: (tour: Tour) => void;
   setActiveScene: (sceneId: string) => void;
+  addScene: (scene: Scene) => void;
   selectHotspot: (hotspotId: string | null) => void;
   setNewHotspotType: (type: HotspotType) => void;
   startPlacingHotspot: () => void;
@@ -68,6 +69,17 @@ export const useEditorStore = create<EditorState>()(
     setActiveScene: (sceneId) =>
       set((state) => {
         state.activeSceneId = sceneId;
+        state.selectedHotspotId = null;
+        state.isPlacingHotspot = false;
+      }),
+
+    // Neue Szene in den Store übernehmen (nach createScene) und aktivieren.
+    // Muss über set() laufen — der Store-State ist eingefroren (immer).
+    addScene: (scene) =>
+      set((state) => {
+        if (!state.tour) return;
+        state.tour.scenes.push(scene);
+        state.activeSceneId = scene.id;
         state.selectedHotspotId = null;
         state.isPlacingHotspot = false;
       }),

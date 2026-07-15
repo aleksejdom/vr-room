@@ -56,6 +56,9 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
     const viewerRef        = useRef<any>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const markersPluginRef = useRef<any>(null);
+    // Wendet die Horizont-Korrektur auf den Viewer an (Grad) — wird bei der
+    // Viewer-Erstellung gesetzt, sobald THREE geladen ist
+    const applyCorrectionRef = useRef<(tiltDeg: number, rollDeg: number) => void>(() => {});
 
     const ignoreNextSelectRef  = useRef(false);
     const transitioningRef     = useRef(false);
@@ -152,9 +155,10 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
       let removeDragListeners: (() => void) | null = null;
 
       (async () => {
-        const [{ Viewer }, { MarkersPlugin }] = await Promise.all([
+        const [{ Viewer }, { MarkersPlugin }, THREE] = await Promise.all([
           import("@photo-sphere-viewer/core"),
           import("@photo-sphere-viewer/markers-plugin"),
+          import("three"),
         ]);
         await Promise.all([
           import("@photo-sphere-viewer/core/index.css"),
@@ -185,6 +189,63 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
         });
 
         viewerRef.current = viewer;
+        if (process.env.NODE_ENV === "development") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).__psv = viewer;
+        }
+
+        // ── Horizont-Korrektur ────────────────────────────────────────────
+        // PSVs Equirect-Adapter rendert über einen Raycasting-Shader, der die
+        // Textur aus der Blickrichtung berechnet — die Mesh-Rotation von
+        // sphereCorrection ist dort wirkungslos. Deshalb injizieren wir eine
+        // Korrektur-Matrix direkt in den Fragment-Shader (Semantik identisch
+        // zu sphereCorrection: Content erscheint um Rx(tilt)·Rz(roll) gedreht).
+        // Fällt bei anderen Adaptern/Versionen auf sphereCorrection zurück.
+        const patchMaterial = (): boolean => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const material = (viewer as any).renderer?.mesh?.material;
+          if (!material?.fragmentShader?.includes("vec3 rayDir = vWorldPos - cameraPosition")) {
+            return false;
+          }
+          if (!material.uniforms.correctionMatrix) {
+            material.uniforms.correctionMatrix = { value: new THREE.Matrix3() };
+            material.fragmentShader = material.fragmentShader
+              .replace(
+                "uniform float radius;",
+                "uniform float radius;\nuniform mat3 correctionMatrix;"
+              )
+              .replace(
+                "float u = atan(-dir.x, dir.z)",
+                "dir = correctionMatrix * dir;\n    float u = atan(-dir.x, dir.z)"
+              );
+            material.needsUpdate = true;
+          }
+          return true;
+        };
+        applyCorrectionRef.current = (tiltDeg: number, rollDeg: number) => {
+          if (!viewerRef.current) return;
+          const t = tiltDeg * DEG_TO_RAD;
+          const r = rollDeg * DEG_TO_RAD;
+          try {
+            if (patchMaterial()) {
+              // Abtastrichtung mit R⁻¹ = Rz(−roll)·Rx(−tilt) drehen
+              const m4 = new THREE.Matrix4()
+                .makeRotationZ(-r)
+                .multiply(new THREE.Matrix4().makeRotationX(-t));
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (viewer as any).renderer.mesh.material.uniforms.correctionMatrix.value.setFromMatrix4(m4);
+              viewer.needsUpdate();
+            } else {
+              viewer.setOption("sphereCorrection", { tilt: t, roll: r });
+            }
+          } catch { /* viewer not ready */ }
+        };
+        viewer.addEventListener(
+          "ready",
+          () => applyCorrectionRef.current(horizonTiltRef.current, horizonRollRef.current),
+          { once: true }
+        );
+
         const markersPlugin = viewer.getPlugin(MarkersPlugin);
         markersPluginRef.current = markersPlugin;
 
@@ -323,26 +384,22 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
         .then(() => {
           if (!viewerRef.current) return;
           transitioningRef.current = false;
+          // setPanorama erzeugt ein neues Mesh → Shader-Korrektur neu anwenden
+          applyCorrectionRef.current(horizonTiltRef.current, horizonRollRef.current);
           rebuildMarkers();
         })
         .catch(() => {
           transitioningRef.current = false;
         });
-    }, [imageUrl, rebuildMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [imageUrl, rebuildMarkers]);
 
     // ── Horizont-Korrektur live anwenden ───────────────────────────────────
     // Greift bei Auto-Ausrichtung und beim Ziehen des Level-Reglers der
     // aktiven Szene. Bei Szenenwechseln ist transitioningRef gesetzt (Effekt
     // oben läuft zuerst) und setPanorama übernimmt die Korrektur selbst.
     useEffect(() => {
-      const v = viewerRef.current;
-      if (!v || transitioningRef.current) return;
-      try {
-        v.setOption("sphereCorrection", {
-          tilt: horizonTilt * DEG_TO_RAD,
-          roll: horizonRoll * DEG_TO_RAD,
-        });
-      } catch { /* viewer not ready */ }
+      if (!viewerRef.current || transitioningRef.current) return;
+      applyCorrectionRef.current(horizonTilt, horizonRoll);
     }, [horizonTilt, horizonRoll]);
 
     // ── Wasserwaagen-Gitter (Level-Korrektur-Panel) ────────────────────────
