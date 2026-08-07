@@ -201,9 +201,8 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
         // Korrektur-Matrix direkt in den Fragment-Shader (Semantik identisch
         // zu sphereCorrection: Content erscheint um Rx(tilt)·Rz(roll) gedreht).
         // Fällt bei anderen Adaptern/Versionen auf sphereCorrection zurück.
-        const patchMaterial = (): boolean => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const material = (viewer as any).renderer?.mesh?.material;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const patchMaterial = (material: any): boolean => {
           if (!material?.fragmentShader?.includes("vec3 rayDir = vWorldPos - cameraPosition")) {
             return false;
           }
@@ -226,18 +225,29 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           if (!viewerRef.current) return;
           const t = tiltDeg * DEG_TO_RAD;
           const r = rollDeg * DEG_TO_RAD;
+          // Abtastrichtung mit R⁻¹ = Rz(−roll)·Rx(−tilt) drehen
+          const m4 = new THREE.Matrix4()
+            .makeRotationZ(-r)
+            .multiply(new THREE.Matrix4().makeRotationX(-t));
           try {
-            if (patchMaterial()) {
-              // Abtastrichtung mit R⁻¹ = Rz(−roll)·Rx(−tilt) drehen
-              const m4 = new THREE.Matrix4()
-                .makeRotationZ(-r)
-                .multiply(new THREE.Matrix4().makeRotationX(-t));
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (viewer as any).renderer.mesh.material.uniforms.correctionMatrix.value.setFromMatrix4(m4);
-              viewer.needsUpdate();
-            } else {
+            // Während einer Crossfade-Transition existieren kurzzeitig zwei
+            // Meshes gleichzeitig in der Szene (altes + neues, noch
+            // unsichtbares Panorama) — deshalb die ganze Szene durchsuchen
+            // statt nur renderer.mesh zu patchen. Sonst trägt das neue Mesh
+            // die Korrektur nicht und der Horizont "springt" sichtbar in
+            // Position, sobald der Crossfade endet und PSV es einblendet.
+            let patchedAny = false;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (viewer as any).renderer?.scene?.traverse((obj: any) => {
+              if (patchMaterial(obj.material)) {
+                obj.material.uniforms.correctionMatrix.value.setFromMatrix4(m4);
+                patchedAny = true;
+              }
+            });
+            if (!patchedAny) {
               viewer.setOption("sphereCorrection", { tilt: t, roll: r });
             }
+            viewer.needsUpdate();
           } catch { /* viewer not ready */ }
         };
         viewer.addEventListener(
@@ -245,6 +255,25 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
           () => applyCorrectionRef.current(horizonTiltRef.current, horizonRollRef.current),
           { once: true }
         );
+
+        // setPanorama() erzeugt für den Crossfade intern ein zweites,
+        // zunächst unsichtbares Mesh (renderer.transition() in
+        // @photo-sphere-viewer/core). Ohne diesen Hook bekäme es die
+        // Horizont-Korrektur erst im .then()-Handler nach Transitionsende —
+        // der Horizont würde im letzten Frame sichtbar springen. Wir patchen
+        // das neue Mesh daher synchron direkt bei seiner Erzeugung, noch
+        // bevor der erste Crossfade-Frame gerendert wird.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rendererSvc = (viewer as any).renderer;
+        if (rendererSvc && typeof rendererSvc.transition === "function") {
+          const originalTransition = rendererSvc.transition.bind(rendererSvc);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rendererSvc.transition = (...args: any[]) => {
+            const animation = originalTransition(...args);
+            applyCorrectionRef.current(horizonTiltRef.current, horizonRollRef.current);
+            return animation;
+          };
+        }
 
         const markersPlugin = viewer.getPlugin(MarkersPlugin);
         markersPluginRef.current = markersPlugin;
@@ -367,8 +396,13 @@ export const PanoramaViewer = forwardRef<PanoramaViewerRef, PanoramaViewerProps>
 
       // PSV crossfade: old panorama dissolves into new one simultaneously,
       // new scene starts at the saved viewport position immediately.
+      // NB: `transition` must be an object — a bare number silently falls
+      // through to PSV's 1500ms/rotate-camera default (see
+      // getTransitionOptions in @photo-sphere-viewer/core), which is what
+      // caused the visible "jump" once the horizon correction below is
+      // reapplied only at the very end of that longer transition.
       (v.setPanorama(imageUrl, {
-        transition:  250,
+        transition: { speed: 400, rotation: false, effect: "fade" },
         showLoader:  false,
         position: {
           yaw:   initialYawRef.current   * DEG_TO_RAD,
